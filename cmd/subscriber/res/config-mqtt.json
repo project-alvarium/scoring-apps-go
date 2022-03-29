@@ -1,0 +1,71 @@
+{
+  "sdk" : {
+    "stream": {
+      "type": "mqtt",
+      "config": {
+        "clientId": "alvarium-subscriber",
+        "qos": 0,
+        "user": "mosquitto",
+        "password": "",
+        "provider": {
+          "host": "localhost",
+          "protocol": "tcp",
+          "port": 1883
+        },
+        "cleanness": false,
+        "topics": ["alvarium-test-topic"]
+      }
+    }
+  },
+  "stream": {
+    "publisher": {
+      "type": "mqtt",
+      "config": {
+        "clientId": "alvarium-publisher",
+        "qos": 0,
+        "user": "mosquitto",
+        "password": "",
+        "provider": {
+          "host": "localhost",
+          "protocol": "tcp",
+          "port": 1883
+        },
+        "cleanness": false,
+        "topics": ["alvarium-calculator"]
+      }
+    }
+  },
+  "database": {
+    "type": "arango",
+    "config": {
+      "databaseName": "alvarium",
+      "edges": [
+        {
+          "collectionName": "lineage",
+          "from": ["data"],
+          "to": ["data"]
+        },
+        {
+          "collectionName": "trust",
+          "from": ["data"],
+          "to": ["annotations"]
+        },
+        {
+          "collectionName": "scoring",
+          "from": ["scores"],
+          "to": ["data"]
+        }
+      ],
+      "graphName": "example-graph",
+      "provider": {
+        "host": "localhost",
+        "protocol": "http",
+        "port": 8529
+      },
+      "vertexes": ["annotations","data","scores"]
+    }
+  },
+  "logging": {
+    "minLogLevel": "debug"
+  }
+}

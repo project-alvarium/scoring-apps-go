@@ -1,0 +1,84 @@
+{
+  "stream": {
+    "subscriber": {
+      "type": "mqtt",
+      "config": {
+        "clientId": "calculator-go",
+        "qos": 0,
+        "user": "mosquitto",
+        "password": "",
+        "provider": {
+          "host": "dcf-mqtt-broker",
+          "protocol": "tcp",
+          "port": 1883
+        },
+        "cleanness": false,
+        "topics": ["alvarium-calculator"]
+      }
+    }
+  },
+  "database": {
+    "type": "arango",
+    "config": {
+      "databaseName": "alvarium",
+      "edges": [
+        {
+          "collectionName": "scoring",
+          "from": ["scores"],
+          "to": ["data"]
+        }
+      ],
+      "graphName": "example-graph",
+      "provider": {
+        "host": "dcf-arango-db",
+        "protocol": "http",
+        "port": 8529
+      },
+      "vertexes": ["scores"]
+    }
+  },
+  "policy": {
+    "type": "local",
+    "config": {
+      "weights": [
+        {
+          "classifier": "production",
+          "items": [
+            {
+              "key": "pki",
+              "value": 2
+            },
+            {
+              "key": "tls",
+              "value": 2
+            },
+            {
+              "key": "tpm",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "classifier": "default",
+          "items": [
+            {
+              "key": "pki",
+              "value": 1
+            },
+            {
+              "key": "tls",
+              "value": 1
+            },
+            {
+              "key": "tpm",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "logging": {
+    "minLogLevel": "debug"
+  }
+}

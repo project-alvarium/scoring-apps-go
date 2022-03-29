@@ -1,0 +1,39 @@
+{
+  "databases": [
+    {
+      "type": "arango",
+      "config": {
+        "databaseName": "alvarium",
+        "graphName": "example-graph",
+        "provider": {
+          "host": "dcf-arango-db",
+          "protocol": "http",
+          "port": 8529
+        },
+        "vertex": "scores"
+      }
+    },
+    {
+      "type": "mongo",
+      "config": {
+        "host": "dcf-mongo-db",
+        "port": 27017,
+        "username": "dbAdmin",
+        "password": "password",
+        "collection": "sampleData",
+        "dbName": "AlvariumDB"
+      }
+    }
+  ],
+  "endpoint": {
+    "host": "0.0.0.0",
+    "port": 8085,
+    "protocol": "http"
+  },
+  "hash": {
+    "type": "sha256"
+  },
+  "logging": {
+    "minLogLevel": "debug"
+  }
+}
