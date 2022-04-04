@@ -1,0 +1,103 @@
+version: "3.7"
+
+networks:
+  dcf-network:
+    driver: bridge
+
+services:
+  mongodb:
+    container_name: dcf-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: dbAdmin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    hostname: dcf-mongo-db
+    image: mongo:4.4-focal
+    networks:
+      dcf-network: { }
+    ports:
+      - "27017:27017/tcp"
+    restart: always
+    volumes:
+      - /var/lib/mongo
+
+  arangodb:
+    container_name: dcf-arango
+    environment:
+      ARANGO_NO_AUTH: 1
+    hostname: dcf-arango-db
+    image: arangodb:3.8
+    networks:
+      dcf-network: { }
+    ports:
+      - "8529:8529/tcp"
+    restart: always
+    volumes:
+      - /var/lib/arango
+
+  mqtt-broker:
+    command: "/usr/sbin/mosquitto -c /mosquitto-no-auth.conf"
+    container_name: dcf-mqtt-broker
+    hostname: dcf-mqtt-broker
+    image: eclipse-mosquitto:2.0
+    networks:
+      dcf-network: { }
+    ports:
+      - "0.0.0.0:1883:1883/tcp"
+    read_only: true
+    restart: always
+
+  policy-agent:
+    command: "run --server /policies/code.rego /policies/data.json"
+    container_name: dcf-policy-agent
+    hostname: dcf-policy-agent
+    image: openpolicyagent/opa:0.36.0
+    networks:
+      dcf-network: { }
+    ports:
+      - "8181:8181/tcp"
+    restart: always
+    volumes:
+      - ../policies:/policies
+
+  dcf-subscriber:
+    container_name: dcf-subscriber
+    depends_on:
+      - arangodb
+      - mqtt-broker
+    image: octo-dcf/scoring-apps-go/docker-subscriber-go:0.0.0-dev
+    networks:
+      dcf-network: { }
+    restart: always
+
+  dcf-calculator:
+    container_name: dcf-calculator
+    depends_on:
+      - arangodb
+      - mqtt-broker
+      - policy-agent
+    image: octo-dcf/scoring-apps-go/docker-calculator-go:0.0.0-dev
+    networks:
+      dcf-network: { }
+    restart: always
+
+  dcf-populator:
+    container_name: dcf-populator
+    depends_on:
+      - arangodb
+      - mongodb
+    image: octo-dcf/scoring-apps-go/docker-populator-go:0.0.0-dev
+    networks:
+      dcf-network: { }
+    restart: always
+
+  dcf-populator-api:
+    container_name: dcf-populator-api
+    depends_on:
+      - arangodb
+      - mongodb
+    image: octo-dcf/scoring-apps-go/docker-populator-api-go:0.0.0-dev
+    networks:
+      dcf-network: { }
+    ports:
+      - "8085:8085/tcp"
+    restart: always

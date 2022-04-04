@@ -10,9 +10,6 @@ require (
 	github.com/project-alvarium/alvarium-sdk-go v0.0.0-20220315000230-872b679bfe1f
 	github.com/project-alvarium/provider-logging v0.0.0-20210720200405-d8d2146a4f14
 	go.mongodb.org/mongo-driver v1.8.4
-)
-
-require (
 	github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
