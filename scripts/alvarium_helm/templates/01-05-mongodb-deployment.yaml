@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.mongodb.deployment.name }}
+  name: {{ .Values.mongodb.deployment.name }}
+spec:
+  replicas: {{ .Values.mongodb.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.mongodb.deployment.name }}
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.mongodb.deployment.name }}
+    spec:
+      containers:
+      - name: dcf-mongodb
+        image: {{ .Values.mongodb.deployment.image }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        args: ["--dbpath","/data/db"]
+        livenessProbe:
+          exec:
+            command:
+              - mongo
+              - --disableImplicitSessions
+              - --eval
+              - "db.adminCommand('ping')"
+          initialDelaySeconds: {{ .Values.mongodb.deployment.initialDelaySeconds }}
+          periodSeconds: {{ .Values.mongodb.deployment.periodSeconds }}
+          timeoutSeconds: {{ .Values.mongodb.deployment.timeoutSeconds }}
+          successThreshold: {{ .Values.mongodb.deployment.successThreshold }}
+          failureThreshold: {{ .Values.mongodb.deployment.failureThreshold }}
+        readinessProbe:
+          exec:
+            command:
+              - mongo
+              - --disableImplicitSessions
+              - --eval
+              - "db.adminCommand('ping')"
+          initialDelaySeconds: {{ .Values.mongodb.deployment.initialDelaySeconds }}
+          periodSeconds: {{ .Values.mongodb.deployment.periodSeconds }}
+          timeoutSeconds: {{ .Values.mongodb.deployment.timeoutSeconds }}
+          successThreshold: {{ .Values.mongodb.deployment.successThreshold }}
+          failureThreshold: {{ .Values.mongodb.deployment.failureThreshold }}
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.mongodb.secret.name }}
+              key: username
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.mongodb.secret.name }}
+              key: password
+        volumeMounts:
+        - name: "mongo-data-dir"
+          mountPath: "/data/db"
+      volumes:
+      - name: "mongo-data-dir"
+        persistentVolumeClaim:
+          claimName: {{ .Values.mongodb.persistentVolumeClaim.name }}

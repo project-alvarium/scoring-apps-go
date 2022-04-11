@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.dcf.subscriber.deployment.name }}
+  name: {{ .Values.dcf.subscriber.deployment.name }}
+spec:
+  replicas: {{ .Values.dcf.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.dcf.subscriber.deployment.name }}
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.dcf.subscriber.deployment.name }}
+    spec:
+      containers:
+      - name: dcf-subscriber
+        image: {{ .Values.dcf.subscriber.deployment.image }}

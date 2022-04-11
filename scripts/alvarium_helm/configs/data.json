@@ -1,0 +1,14 @@
+{
+    "classes": {
+        "default": {
+            "pki": 1,
+            "tls": 1,
+            "tpm": 1
+        },
+        "production": {
+            "pki": 2,
+            "tls": 2,
+            "tpm": 1
+        }
+    }
+}

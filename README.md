@@ -35,3 +35,7 @@ As indicated in the `make` argument this option also supports OPA for applying a
 # Scoring overview
 
 Please see the `DCF_Scoring_Method_Proposed.pdf` document in the root of this repo for a complete flow diagram of how these services interact.
+# Kubernetes deployment
+- If you use a local docker registry for the K8s cluster, ensure that the scoring-apps docker images are already there.
+- If you do not use a local docker registry for the K8s cluster, ensure that the scoring-apps docker images are composed created on each worker-node/host-node
+- run 'helm install dcf scripts/alvarium_helm/ -n dcf --create-namespace' 

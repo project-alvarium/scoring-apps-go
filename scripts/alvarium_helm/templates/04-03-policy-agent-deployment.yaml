@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.policyAgent.deployment.name }}
+  name: {{ .Values.policyAgent.deployment.name }}
+spec:
+  replicas: {{ .Values.policyAgent.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.policyAgent.deployment.name }}
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.policyAgent.deployment.name }}
+    spec:
+      containers:
+      - name: dcf-policy-agent
+        image: {{ .Values.policyAgent.deployment.image }}
+        args: ["run", "--server", "/policies/code.rego", "/policies/data.json"]
+        volumeMounts:
+        - name: config
+          mountPath: /policies/data.json
+          subPath: data.json
+        - name: config
+          mountPath: /policies/code.rego
+          subPath: code.rego
+      volumes:
+      - name: config
+        configMap:
+          name: {{ .Values.policyAgent.configMap.name }}

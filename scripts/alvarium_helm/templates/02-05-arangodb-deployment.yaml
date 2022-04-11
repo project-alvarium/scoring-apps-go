@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.arangodb.deployment.name }}
+  name: {{ .Values.arangodb.deployment.name }}
+spec:
+  replicas: {{ .Values.arangodb.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.arangodb.deployment.name }}
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.arangodb.deployment.name }}
+    spec:
+      containers:
+      - name: dcf-arango
+        image: {{ .Values.arangodb.deployment.image }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        env:
+        - name: ARANGO_NO_AUTH
+          value: {{ .Values.arangodb.deployment.arangoNoAuth | quote}}
+        volumeMounts:
+        - name: "arango-data-dir"
+          mountPath: "/var/lib/arangodb3"
+      volumes:
+      - name: "arango-data-dir"
+        persistentVolumeClaim:
+          claimName: {{ .Values.arangodb.persistentVolumeClaim.name }}
+
