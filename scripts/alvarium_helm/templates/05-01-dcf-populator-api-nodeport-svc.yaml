@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.dcf.populatorAPI.service.name }}
+  labels:
+    app: {{ .Values.dcf.populatorAPI.deployment.name }}
+spec:
+  type: NodePort
+  ports:
+  - protocol: TCP
+    port: {{ .Values.dcf.populatorAPI.service.port }}
+    nodePort: {{ .Values.dcf.populatorAPI.service.nodePort }}
+    targetPort: {{ .Values.dcf.populatorAPI.service.targetPort }}
+  selector:
+    app: {{ .Values.dcf.populatorAPI.deployment.name }}
+

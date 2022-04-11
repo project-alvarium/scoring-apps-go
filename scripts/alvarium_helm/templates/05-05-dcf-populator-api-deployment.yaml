@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.dcf.populatorAPI.deployment.name }}
+  name: {{ .Values.dcf.populatorAPI.deployment.name }}
+spec:
+  replicas: {{ .Values.dcf.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.dcf.populatorAPI.deployment.name }}
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.dcf.populatorAPI.deployment.name }}
+    spec:
+      containers:
+      - name: dcf-populator
+        image: {{ .Values.dcf.populatorAPI.deployment.image }}
+        ports:
+          - protocol: TCP
+            containerPort: 8085

@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.dcf.populator.deployment.name }}
+  name: {{ .Values.dcf.populator.deployment.name }}
+spec:
+  replicas: {{ .Values.dcf.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.dcf.populator.deployment.name }}
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.dcf.populator.deployment.name }}
+    spec:
+      containers:
+      - name: dcf-populator
+        image: {{ .Values.dcf.populator.deployment.image }}

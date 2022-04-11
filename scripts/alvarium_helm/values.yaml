@@ -1,0 +1,119 @@
+#######################################################################
+#                        Key values to change                         #
+#            In configs/ directory code.rego, data.json               #
+#             mongodb -> storage, path, image, nodePort               #
+#            arangodb -> storage, path, image, nodePort               #
+#                      mqtt -> image, nodePort                        #
+#                  policyAgent -> image, nodePort                     #
+#                      dcf -> images, nodePort                        #
+#######################################################################
+
+
+nameOverride: ""
+# This imagePullPolicy is used for all images.
+imagePullPolicy: Always
+
+# MongoDB Variables
+mongodb:
+  replicaCount: 1
+  secret:
+    name: mongo-creds
+    username: ZGJBZG1pbg==
+    password: cGFzc3dvcmQ=
+  persistentVolume:
+    name: mongodb-data-pv
+    storage: 1Gi
+    path: /data/dcf/mongo
+  persistentVolumeClaim:
+    name: mongo-data
+  service:
+    name: dcf-mongo-db
+    port: 27017
+    targetPort: 27017
+    nodePort: 32010
+  deployment:
+    name: mongo
+    image: mongo:4.4-focal
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 6
+
+# ArangoDB Variables
+arangodb:
+  replicaCount: 1
+  secret:
+    name: arango-creds
+    username: ZGJBZG1pbg==
+    password: cGFzc3dvcmQ=
+  persistentVolume:
+    name: arangodb-data-pv
+    storage: 1Gi
+    path: /data/dcf/arango
+  persistentVolumeClaim:
+    name: arango-data
+  service:
+    name: dcf-arango-db
+    port: 8529
+    targetPort: 8529
+    nodePort: 32011
+  deployment:
+    name: arango
+    image: arangodb:3.8
+    arangoNoAuth: "1"
+
+# MQTT Variables
+mqtt:
+  replicaCount: 1
+  service:
+    name: dcf-mqtt-broker
+    port: 1883
+    targetPort: 1883
+    nodePort: 32012
+  deployment:
+    name: mqtt
+    image: eclipse-mosquitto:2.0
+
+# PolicyAgent Variables
+policyAgent:
+  replicaCount: 1
+  configMap:
+    name: policy-conf
+    data:
+      # Mounts to /policies/ in the container (Image is looking for these filenames)
+      code.rego: configs/code.rego
+      data.json: configs/data.json
+  service:
+    name: dcf-policy-agent
+    port: 8181
+    targetPort: 8181
+    nodePort: 32013
+  deployment:
+    name: policy
+    image: openpolicyagent/opa:0.36.0
+
+# DCF Variables
+dcf:
+  replicaCount: 1
+  subscriber:
+    deployment:
+      name: dcf-subscriber
+      image: octo-dcf/scoring-apps-go/docker-subscriber-go:0.0.0-dev
+  calculator:
+    deployment:
+      name: dcf-calculator
+      image: octo-dcf/scoring-apps-go/docker-calculator-go:0.0.0-dev
+  populator:
+    deployment:
+      name: dcf-populator
+      image: octo-dcf/scoring-apps-go/docker-populator-go:0.0.0-dev
+  populatorAPI:
+    service:
+      name: dcf-populator-api
+      port: 8085
+      targetPort: 8085
+      nodePort: 32014
+    deployment:
+      name: populator-api
+      image: octo-dcf/scoring-apps-go/docker-populator-api-go:0.0.0-dev

@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.mqtt.deployment.name }}
+  name: {{ .Values.mqtt.deployment.name }}
+spec:
+  replicas: {{ .Values.mqtt.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.mqtt.deployment.name }}
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.mqtt.deployment.name }}
+    spec:
+      containers:
+      - name: dcf-mqtt-broker
+        image: {{ .Values.mqtt.deployment.image }}
+        command: ["/usr/sbin/mosquitto", "-c", "/mosquitto-no-auth.conf"]
