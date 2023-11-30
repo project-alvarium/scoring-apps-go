@@ -17,12 +17,12 @@ package streams
 import (
 	"errors"
 	"fmt"
+
 	"github.com/project-alvarium/alvarium-sdk-go/pkg/config"
 	"github.com/project-alvarium/alvarium-sdk-go/pkg/contracts"
 	"github.com/project-alvarium/alvarium-sdk-go/pkg/message"
 	logInterface "github.com/project-alvarium/provider-logging/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/subscriber"
-	"github.com/project-alvarium/scoring-apps-go/internal/subscriber/streams/iota"
 	"github.com/project-alvarium/scoring-apps-go/internal/subscriber/streams/mqtt"
 )
 
@@ -30,12 +30,6 @@ func NewSubscriber(cfg config.StreamInfo, pub chan message.SubscribeWrapper, key
 	var sub subscriber.Subscriber
 
 	switch cfg.Type {
-	case contracts.IotaStream:
-		endpoint, ok := cfg.Config.(config.IotaStreamConfig)
-		if !ok {
-			return nil, errors.New("unknown type cast to IotaStreamConfig failed")
-		}
-		sub = iota.NewIotaSubscriber(endpoint, pub, logger, key)
 	case contracts.MqttStream:
 		endpoint, ok := cfg.Config.(config.MqttConfig)
 		if !ok {

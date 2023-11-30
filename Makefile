@@ -1,4 +1,4 @@
-.PHONY: build clean docker run run_docker run_iota run_iota_opa run_opa test
+.PHONY: build clean docker run run_docker run_opa test
 
 MICROSERVICES=cmd/calculator/calculator-go \
 				cmd/populator/populator-go \
@@ -103,14 +103,6 @@ run:
 .PHONY: run_docker ## MQTT annotation pub/sub, OPA policy, Mongo and ArangoDB
 run_docker:
 	cd scripts/bin && ./launch_docker.sh
-
-.PHONY: run_iota ## IOTA annotation pub/sub with local policy definition
-run_iota:
-	cd scripts/bin && ./launch_iota.sh
-
-.PHONY: run_iota_opa ## IOTA annotation pub/sub with OPA server policy definition
-run_iota_opa:
-	cd scripts/bin && ./launch_iota_opa.sh
 
 .PHONY: run_opa ## MQTT annotation pub/sub with OPA server policy definition
 run_opa:
