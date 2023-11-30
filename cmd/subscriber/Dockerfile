@@ -29,7 +29,6 @@ FROM ${BUILDER_BASE}
 
 WORKDIR /
 COPY --from=builder /dcf/cmd/subscriber/subscriber-go /
-COPY --from=builder /dcf/internal/subscriber/streams/iota/include/libiota_streams_c.so /usr/lib/libiota_streams_c.so
 COPY --from=builder /dcf/cmd/subscriber/res/docker/config.json /res/config.json
 COPY --from=builder /dcf/cmd/subscriber/res/docker/config-mqtt.json /res/config-mqtt.json
 

@@ -38,6 +38,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/project-alvarium/alvarium-sdk-go v0.0.0-20220315000230-872b679bfe1f h1:7J6gif18DWc/xnz1f9n4Br7ShOJ9QvxPGPmIau5xrVY=
 github.com/project-alvarium/alvarium-sdk-go v0.0.0-20220315000230-872b679bfe1f/go.mod h1:7aOh8XmStCus8sTFlecerLRxQKuVKUb+4CZV7pFywwE=
+github.com/project-alvarium/alvarium-sdk-go v0.0.0-20230622002945-0532be91d69b h1:pIWeWr10uz32udQAxt/curle4Qpo/MNB0lhMtRwtt0Q=
+github.com/project-alvarium/alvarium-sdk-go v0.0.0-20230622002945-0532be91d69b/go.mod h1:JfGeqzOMeSNnzVzaMR1kPCSm6PvQWgJju/m4DB0hQls=
 github.com/project-alvarium/provider-logging v0.0.0-20210720200405-d8d2146a4f14 h1:4fwmK78itC3d8CMcwUHSHmzKEk84g8GrqHk5j0VBCS4=
 github.com/project-alvarium/provider-logging v0.0.0-20210720200405-d8d2146a4f14/go.mod h1:25HpPXwSpStTsQExg995vhsYgB0mBto2m/F9DibbqCc=
 github.com/rs/xid v1.2.1/go.mod h1:+uKXf+4Djp6Md1KODXJxgGQPKngRmWyn10oCKFzNHOQ=
@@ -92,3 +94,5 @@ gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b h1:h8qDotaEPuJATrMmW04NCwg7v22aHH28wwpauUhK9Oo=
 gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
