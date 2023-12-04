@@ -1,5 +1,4 @@
 {
-  "sdk": {},
   "stream": {
     "publisher": {
       "type": "mqtt",
