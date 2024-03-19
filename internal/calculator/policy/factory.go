@@ -17,9 +17,9 @@ package policy
 import (
 	"errors"
 	"fmt"
-	"github.com/project-alvarium/provider-logging/pkg/logging"
+	"log/slog"
 
-	"github.com/project-alvarium/provider-logging/pkg/interfaces"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/config"
 )
 
@@ -37,7 +37,7 @@ func NewPolicyProvider(policyInfo config.PolicyInfo, logger interfaces.Logger) (
 		if !ok {
 			return nil, errors.New("invalid cast type for OpenPolicyConfig")
 		} else {
-			logger.Write(logging.DebugLevel, "OPA connection successful")
+			logger.Write(slog.LevelDebug, "OPA connection successful")
 		}
 		return NewOpenPolicyProvider(cfg), nil
 

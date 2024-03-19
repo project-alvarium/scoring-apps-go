@@ -10,7 +10,7 @@ RUN apt-get update -y -q && apt-get upgrade -y -q
 #Install additional tooling
 RUN DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y -q git openssl curl build-essential ca-certificates
 #Install Go
-RUN curl -s https://storage.googleapis.com/golang/go1.17.8.linux-amd64.tar.gz| tar -v -C /usr/local -xz
+RUN curl -s https://storage.googleapis.com/golang/go1.22.0.linux-amd64.tar.gz| tar -v -C /usr/local -xz
 
 #Set PATH to include Go binaries
 ENV PATH="${PATH}:/usr/local/go/bin"

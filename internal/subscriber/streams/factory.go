@@ -20,13 +20,13 @@ import (
 
 	"github.com/project-alvarium/alvarium-sdk-go/pkg/config"
 	"github.com/project-alvarium/alvarium-sdk-go/pkg/contracts"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/alvarium-sdk-go/pkg/message"
-	logInterface "github.com/project-alvarium/provider-logging/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/subscriber"
 	"github.com/project-alvarium/scoring-apps-go/internal/subscriber/streams/mqtt"
 )
 
-func NewSubscriber(cfg config.StreamInfo, pub chan message.SubscribeWrapper, key string, logger logInterface.Logger) (subscriber.Subscriber, error) {
+func NewSubscriber(cfg config.StreamInfo, pub chan message.SubscribeWrapper, key string, logger interfaces.Logger) (subscriber.Subscriber, error) {
 	var sub subscriber.Subscriber
 
 	switch cfg.Type {

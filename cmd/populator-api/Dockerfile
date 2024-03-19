@@ -1,6 +1,6 @@
 # Docker image for populator-api-go DCF scoring micro service
 
-ARG BUILDER_BASE=golang:1.17-alpine
+ARG BUILDER_BASE=golang:1.22-alpine
 FROM ${BUILDER_BASE} AS builder
 
 WORKDIR /dcf

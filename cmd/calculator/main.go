@@ -17,9 +17,10 @@ package main
 import (
 	"context"
 	"flag"
-	logConfig "github.com/project-alvarium/provider-logging/pkg/config"
-	logFactory "github.com/project-alvarium/provider-logging/pkg/factories"
-	"github.com/project-alvarium/provider-logging/pkg/logging"
+	"log/slog"
+
+	sdkConfig "github.com/project-alvarium/alvarium-sdk-go/pkg/config"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/factories"
 	"github.com/project-alvarium/scoring-apps-go/internal/bootstrap"
 	"github.com/project-alvarium/scoring-apps-go/internal/calculator"
 	"github.com/project-alvarium/scoring-apps-go/internal/calculator/policy"
@@ -48,7 +49,7 @@ func main() {
 	fileFormat := config.GetFileExtension(configPath)
 	reader, err := config.NewReader(fileFormat)
 	if err != nil {
-		tmpLog := logFactory.NewLogger(logConfig.LoggingInfo{MinLogLevel: logging.ErrorLevel})
+		tmpLog := factories.NewLogger(sdkConfig.LoggingInfo{MinLogLevel: slog.LevelError})
 		tmpLog.Error(err.Error())
 		os.Exit(1)
 	}
@@ -56,14 +57,14 @@ func main() {
 	cfg := calculator.ApplicationConfig{}
 	err = reader.Read(configPath, &cfg)
 	if err != nil {
-		tmpLog := logFactory.NewLogger(logConfig.LoggingInfo{MinLogLevel: logging.ErrorLevel})
+		tmpLog := factories.NewLogger(sdkConfig.LoggingInfo{MinLogLevel: slog.LevelError})
 		tmpLog.Error(err.Error())
 		os.Exit(1)
 	}
 
-	logger := logFactory.NewLogger(cfg.Logging)
-	logger.Write(logging.DebugLevel, "config loaded successfully")
-	logger.Write(logging.DebugLevel, cfg.AsString())
+	logger := factories.NewLogger(cfg.Logging)
+	logger.Write(slog.LevelDebug, "config loaded successfully")
+	logger.Write(slog.LevelDebug, cfg.AsString())
 
 	chKeys := make(chan string)
 	sub, err := calculator.NewSubscriber(cfg.Stream.Subscribe, chKeys, logger)

@@ -18,16 +18,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"sync"
+	"time"
+
 	"github.com/arangodb/go-driver"
 	"github.com/arangodb/go-driver/http"
 	sdkContract "github.com/project-alvarium/alvarium-sdk-go/pkg/contracts"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/alvarium-sdk-go/pkg/message"
-	logInterface "github.com/project-alvarium/provider-logging/pkg/interfaces"
-	"github.com/project-alvarium/provider-logging/pkg/logging"
 	"github.com/project-alvarium/scoring-apps-go/internal/config"
 	"github.com/project-alvarium/scoring-apps-go/pkg/documents"
-	"sync"
-	"time"
 )
 
 type arangoClient struct {
@@ -35,10 +36,10 @@ type arangoClient struct {
 	chPub  chan string
 	chSub  chan message.SubscribeWrapper
 	client driver.Client
-	logger logInterface.Logger
+	logger interfaces.Logger
 }
 
-func NewArangoClient(sub chan message.SubscribeWrapper, pub chan string, dbConfig config.DatabaseInfo, logger logInterface.Logger) (arangoClient, error) {
+func NewArangoClient(sub chan message.SubscribeWrapper, pub chan string, dbConfig config.DatabaseInfo, logger interfaces.Logger) (arangoClient, error) {
 	cfg, ok := dbConfig.Config.(config.ArangoConfig)
 	if !ok {
 		return arangoClient{}, fmt.Errorf("invalid config type, expected %s", config.DBArango)
@@ -83,16 +84,16 @@ func (c *arangoClient) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup)
 			if ok {
 				switch item.Action {
 				case message.ActionCreate:
-					c.logger.Write(logging.DebugLevel, "handling create")
+					c.logger.Write(slog.LevelDebug, "handling create")
 					err = c.handleCreateTransit(ctx, item.Content)
 				case message.ActionTransit:
-					c.logger.Write(logging.DebugLevel, "handling transit")
+					c.logger.Write(slog.LevelDebug, "handling transit")
 					err = c.handleCreateTransit(ctx, item.Content)
 				case message.ActionMutate:
-					c.logger.Write(logging.DebugLevel, "handling mutate")
+					c.logger.Write(slog.LevelDebug, "handling mutate")
 					err = c.handleMutate(ctx, item.Content)
 				default:
-					c.logger.Write(logging.DebugLevel, "unrecognized item.Action value %s", item.Action)
+					c.logger.Write(slog.LevelDebug, "unrecognized item.Action value %s", item.Action)
 					continue
 				}
 
@@ -111,7 +112,7 @@ func (c *arangoClient) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup)
 
 		<-ctx.Done()
 		close(c.chPub)
-		c.logger.Write(logging.InfoLevel, "shutdown received")
+		c.logger.Write(slog.LevelInfo, "shutdown received")
 	}()
 	return true
 }
@@ -124,7 +125,7 @@ func (c *arangoClient) handleMutate(ctx context.Context, content []byte) error {
 	}
 
 	if len(list.Items) == 0 {
-		c.logger.Write(logging.DebugLevel, "items is zero-length")
+		c.logger.Write(slog.LevelDebug, "items is zero-length")
 		return nil
 	}
 	db, err := c.client.Database(ctx, c.cfg.DatabaseName)
@@ -200,7 +201,7 @@ func (c *arangoClient) handleCreateTransit(ctx context.Context, content []byte) 
 	}
 
 	if len(list.Items) == 0 {
-		c.logger.Write(logging.DebugLevel, "items is zero-length")
+		c.logger.Write(slog.LevelDebug, "items is zero-length")
 		return nil
 	}
 	db, err := c.client.Database(ctx, c.cfg.DatabaseName)
@@ -247,10 +248,10 @@ func (c *arangoClient) initGraph(ctx context.Context) error {
 		return err
 	}
 	if !exists {
-		c.logger.Write(logging.DebugLevel, "creating database "+c.cfg.DatabaseName)
+		c.logger.Write(slog.LevelDebug, "creating database "+c.cfg.DatabaseName)
 		c.client.CreateDatabase(ctx, c.cfg.DatabaseName, nil)
 	} else {
-		c.logger.Write(logging.DebugLevel, "database exists "+c.cfg.DatabaseName)
+		c.logger.Write(slog.LevelDebug, "database exists "+c.cfg.DatabaseName)
 	}
 
 	db, err := c.client.Database(ctx, c.cfg.DatabaseName)
@@ -271,7 +272,7 @@ func (c *arangoClient) initGraph(ctx context.Context) error {
 			}
 			options.EdgeDefinitions = append(options.EdgeDefinitions, edge)
 		}
-		c.logger.Write(logging.DebugLevel, "creating graph "+c.cfg.GraphName)
+		c.logger.Write(slog.LevelDebug, "creating graph "+c.cfg.GraphName)
 		graph, err := db.CreateGraph(ctx, c.cfg.GraphName, &options)
 		if err != nil {
 			return err
@@ -282,30 +283,31 @@ func (c *arangoClient) initGraph(ctx context.Context) error {
 				return err
 			}
 			if !exists {
-				c.logger.Write(logging.DebugLevel, "creating vertex "+v)
+				c.logger.Write(slog.LevelDebug, "creating vertex "+v)
 				_, err = graph.CreateVertexCollection(ctx, v)
 				if err != nil {
 					return err
 				}
 			} else {
-				c.logger.Write(logging.DebugLevel, "vertex exists "+v)
+				c.logger.Write(slog.LevelDebug, "vertex exists "+v)
 			}
 		}
 	} else {
-		c.logger.Write(logging.DebugLevel, "graph exists "+c.cfg.GraphName)
+		c.logger.Write(slog.LevelDebug, "graph exists "+c.cfg.GraphName)
 	}
 
 	return nil
 }
 
 func (c *arangoClient) createAnnotationDocument(ctx context.Context, a sdkContract.Annotation, collection driver.Collection) error {
+	c.logger.Write(slog.LevelDebug, "annotation received: "+a.Tag)
 	doc := documents.NewAnnotation(a)
 	meta, err := collection.CreateDocument(ctx, doc)
 	if err != nil {
 		return err
 	}
 	b, _ := json.Marshal(meta)
-	c.logger.Write(logging.DebugLevel, "annotation document created: "+string(b))
+	c.logger.Write(slog.LevelDebug, "annotation document created: "+string(b))
 	return nil
 }
 
@@ -324,7 +326,7 @@ func (c *arangoClient) createDataDocument(ctx context.Context, documentKey strin
 			return err
 		}
 		b, _ := json.Marshal(meta)
-		c.logger.Write(logging.DebugLevel, "data document created: "+string(b))
+		c.logger.Write(slog.LevelDebug, "data document created: "+string(b))
 	}
 	return nil
 }
@@ -352,6 +354,6 @@ func (c *arangoClient) createEdge(ctx context.Context, src string, target string
 		return err
 	}
 	b, _ := json.Marshal(meta)
-	c.logger.Write(logging.DebugLevel, "edge document created: "+string(b))
+	c.logger.Write(slog.LevelDebug, "edge document created: "+string(b))
 	return nil
 }

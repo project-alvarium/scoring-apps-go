@@ -16,22 +16,23 @@ package calculator
 
 import (
 	"context"
+	"log/slog"
+	"sync"
+
 	SdkConfig "github.com/project-alvarium/alvarium-sdk-go/pkg/config"
-	logInterface "github.com/project-alvarium/provider-logging/pkg/interfaces"
-	"github.com/project-alvarium/provider-logging/pkg/logging"
+	SdkInterfaces "github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/pubsub/factories"
 	"github.com/project-alvarium/scoring-apps-go/internal/pubsub/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/pkg/msg"
-	"sync"
 )
 
 type Subscriber struct {
 	chKeys   chan string
 	instance interfaces.Subscriber
-	logger   logInterface.Logger
+	logger   SdkInterfaces.Logger
 }
 
-func NewSubscriber(endpoint SdkConfig.StreamInfo, chKeys chan string, logger logInterface.Logger) (Subscriber, error) {
+func NewSubscriber(endpoint SdkConfig.StreamInfo, chKeys chan string, logger SdkInterfaces.Logger) (Subscriber, error) {
 	t, err := factories.NewSubscriber(endpoint)
 	if err != nil {
 		return Subscriber{}, err
@@ -77,12 +78,12 @@ func (s *Subscriber) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup) b
 		s.instance.Close()
 		close(s.chKeys)
 		close(chErrors)
-		s.logger.Write(logging.InfoLevel, "shutdown received")
+		s.logger.Write(slog.LevelInfo, "shutdown received")
 	}()
 	return true
 }
 
-func logErrors(ch chan error, logger logInterface.Logger) {
+func logErrors(ch chan error, logger SdkInterfaces.Logger) {
 	for {
 		e, ok := <-ch
 		if !ok {

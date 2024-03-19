@@ -13,17 +13,18 @@
  *******************************************************************************/
 
 /*
-	Package bootstrap contains all abstractions and implementation necessary to bootstrap the application.
+Package bootstrap contains all abstractions and implementation necessary to bootstrap the application.
 */
 package bootstrap
 
 import (
 	"context"
-	"github.com/project-alvarium/alvarium-sdk-go/pkg/config"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/config"
 )
 
 // Run is the bootstrap process entry point. All relevant application components can be initialized by providing a

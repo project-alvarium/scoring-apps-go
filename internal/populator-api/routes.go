@@ -17,16 +17,17 @@ package populator_api
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/gorilla/mux"
-	"github.com/project-alvarium/provider-logging/pkg/interfaces"
-	"github.com/project-alvarium/provider-logging/pkg/logging"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/db"
 	"github.com/project-alvarium/scoring-apps-go/internal/hashprovider"
 	"github.com/project-alvarium/scoring-apps-go/internal/models"
 	"github.com/project-alvarium/scoring-apps-go/pkg/responses"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 const (
@@ -66,7 +67,7 @@ func getIndexHandler(w http.ResponseWriter, r *http.Request, logger interfaces.L
 	w.Write([]byte("<html><head><title>Populator API</title></head><body><h2>Populator API</h2></body></html>"))
 
 	elapsed := time.Now().Sub(start)
-	logger.Write(logging.TraceLevel, fmt.Sprintf("getIndexHandler OK %v", elapsed))
+	logger.Write(slog.LevelDebug, fmt.Sprintf("getIndexHandler OK %v", elapsed))
 }
 
 func getDocumentCountHandler(w http.ResponseWriter, r *http.Request, dbMongo *db.MongoProvider, logger interfaces.Logger) {
@@ -81,7 +82,7 @@ func getDocumentCountHandler(w http.ResponseWriter, r *http.Request, dbMongo *db
 	}
 	result := responses.DocumentCountResponse{Count: count}
 	b, _ := json.Marshal(result)
-	logger.Write(logging.DebugLevel, fmt.Sprintf("count=%v, %s", count, string(b)))
+	logger.Write(slog.LevelDebug, fmt.Sprintf("count=%v, %s", count, string(b)))
 	w.Header().Add(headerKeyContentType, headerValueJson)
 	w.Header().Add(headerCORS, headerCORSValue)
 	w.WriteHeader(http.StatusOK)
@@ -94,7 +95,7 @@ func getSampleDataHandler(w http.ResponseWriter, r *http.Request, dbMongo *db.Mo
 	vars := mux.Vars(r)
 	limit, err := strconv.Atoi(vars["limit"])
 	if err != nil {
-		logger.Write(logging.DebugLevel, "Bad request: "+err.Error())
+		logger.Write(slog.LevelDebug, "Bad request: "+err.Error())
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 		return
@@ -130,7 +131,7 @@ func getAnnotationsHandler(w http.ResponseWriter, r *http.Request, dbMongo *db.M
 	id := vars["id"]
 	if len(id) == 0 {
 		errMsg := "Bad request: no id provided"
-		logger.Write(logging.DebugLevel, errMsg)
+		logger.Write(slog.LevelDebug, errMsg)
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(errMsg))
 		return

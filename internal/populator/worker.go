@@ -18,13 +18,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/project-alvarium/provider-logging/pkg/interfaces"
-	"github.com/project-alvarium/provider-logging/pkg/logging"
+	"log/slog"
+	"sync"
+	"time"
+
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/db"
 	"github.com/project-alvarium/scoring-apps-go/internal/hashprovider"
 	"github.com/project-alvarium/scoring-apps-go/internal/models"
-	"sync"
-	"time"
 )
 
 type Worker struct {
@@ -48,12 +49,12 @@ func (w *Worker) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup) bool 
 		defer wg.Done()
 
 		for {
-			w.logger.Write(logging.DebugLevel, "polling...")
+			w.logger.Write(slog.LevelDebug, "polling...")
 			records, err := w.dbMongo.QueryUnpopulated(ctx)
 			if err != nil {
 				w.logger.Error(err.Error())
 			} else {
-				w.logger.Write(logging.DebugLevel, fmt.Sprintf("%v records found", len(records)))
+				w.logger.Write(slog.LevelDebug, fmt.Sprintf("%v records found", len(records)))
 				for _, item := range records {
 					appData := models.SampleFromMongoRecord(item)
 					// TODO: This should eventually be configurable according to the hash algorithm used by the Alvarium ecosystem.
@@ -66,7 +67,7 @@ func (w *Worker) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup) bool 
 						w.logger.Error(err.Error())
 						continue
 					}
-					w.logger.Write(logging.DebugLevel, fmt.Sprintf("score for key %s is %v", key, score.Confidence))
+					w.logger.Write(slog.LevelDebug, fmt.Sprintf("score for key %s is %v", key, score.Confidence))
 					if score.Confidence > 0 {
 						item.Confidence = score.Confidence
 						err = w.dbMongo.UpdateDocument(ctx, item)
@@ -91,7 +92,7 @@ func (w *Worker) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup) bool 
 
 		<-ctx.Done()
 		cancelled = true
-		w.logger.Write(logging.InfoLevel, "shutdown received")
+		w.logger.Write(slog.LevelInfo, "shutdown received")
 	}()
 	return true
 }
