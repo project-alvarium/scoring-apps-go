@@ -1,9 +1,12 @@
 # Docker image for calculator-go DCF scoring micro service
 
-ARG BUILDER_BASE=golang:1.17-alpine
+ARG BUILDER_BASE=golang:1.22-alpine
 FROM ${BUILDER_BASE} AS builder
 
 WORKDIR /dcf
+
+# Install additional tooling for build
+RUN apk add build-base
 
 #RUN apt update && apt install make git
 RUN sed -e 's/dl-cdn[.]alpinelinux.org/nl.alpinelinux.org/g' -i~ /etc/apk/repositories
