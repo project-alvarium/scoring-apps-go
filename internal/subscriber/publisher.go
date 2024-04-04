@@ -17,23 +17,24 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"sync"
+
 	SdkConfig "github.com/project-alvarium/alvarium-sdk-go/pkg/config"
-	logInterface "github.com/project-alvarium/provider-logging/pkg/interfaces"
-	"github.com/project-alvarium/provider-logging/pkg/logging"
+	SdkInterfaces "github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/pubsub/factories"
 	"github.com/project-alvarium/scoring-apps-go/internal/pubsub/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/pkg/msg"
-	"sync"
 )
 
 // Publisher is used to notify downstream applications that a given data item is ready for scoring.
 type Publisher struct {
 	chKeys   chan string
 	instance interfaces.Publisher
-	logger   logInterface.Logger
+	logger   SdkInterfaces.Logger
 }
 
-func NewPublisher(endpoint SdkConfig.StreamInfo, chKeys chan string, logger logInterface.Logger) (Publisher, error) {
+func NewPublisher(endpoint SdkConfig.StreamInfo, chKeys chan string, logger SdkInterfaces.Logger) (Publisher, error) {
 	t, err := factories.NewPublisher(endpoint)
 	if err != nil {
 		return Publisher{}, err
@@ -59,7 +60,7 @@ func (s *Publisher) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup) bo
 				}
 				s.instance.Publish(ctx, toSend)
 
-				s.logger.Write(logging.DebugLevel, fmt.Sprintf("CalculateScore published %s", key))
+				s.logger.Write(slog.LevelDebug, fmt.Sprintf("CalculateScore published %s", key))
 			} else {
 				return
 			}
@@ -72,7 +73,7 @@ func (s *Publisher) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup) bo
 
 		<-ctx.Done()
 		s.instance.Close()
-		s.logger.Write(logging.InfoLevel, "shutdown received")
+		s.logger.Write(slog.LevelInfo, "shutdown received")
 	}()
 	return true
 }

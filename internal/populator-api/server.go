@@ -16,15 +16,16 @@ package populator_api
 
 import (
 	"context"
-	"github.com/gorilla/mux"
-	SdkConfig "github.com/project-alvarium/alvarium-sdk-go/pkg/config"
-	"github.com/project-alvarium/provider-logging/pkg/interfaces"
-	"github.com/project-alvarium/provider-logging/pkg/logging"
-	"github.com/project-alvarium/scoring-apps-go/internal/db"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/gorilla/mux"
+	SdkConfig "github.com/project-alvarium/alvarium-sdk-go/pkg/config"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
+	"github.com/project-alvarium/scoring-apps-go/internal/db"
 )
 
 // HttpServer contains references to dependencies required by the http server implementation.
@@ -64,14 +65,14 @@ func (b *HttpServer) BootstrapHandler(
 		ReadTimeout:  timeout,
 	}
 
-	b.logger.Write(logging.InfoLevel, "Web server starting ("+addr+")")
+	b.logger.Write(slog.LevelDebug, "Web server starting ("+addr+")")
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
 		_ = server.ListenAndServe()
-		b.logger.Write(logging.InfoLevel, "Web server stopped")
+		b.logger.Write(slog.LevelDebug, "Web server stopped")
 	}()
 
 	wg.Add(1)
@@ -80,11 +81,11 @@ func (b *HttpServer) BootstrapHandler(
 
 		<-ctx.Done()
 		//DEBUG
-		b.logger.Write(logging.InfoLevel, "Web server shutting down")
+		b.logger.Write(slog.LevelDebug, "Web server shutting down")
 		_ = server.Shutdown(ctx)
 		b.dbMongo.Close(ctx)
 		//DEBUG
-		b.logger.Write(logging.InfoLevel, "Web server shut down")
+		b.logger.Write(slog.LevelDebug, "Web server shut down")
 	}()
 
 	return true

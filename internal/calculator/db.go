@@ -17,10 +17,11 @@ package calculator
 import (
 	"context"
 	"fmt"
+	"log/slog"
+
 	"github.com/arangodb/go-driver"
 	"github.com/arangodb/go-driver/http"
-	logInterface "github.com/project-alvarium/provider-logging/pkg/interfaces"
-	"github.com/project-alvarium/provider-logging/pkg/logging"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/config"
 	"github.com/project-alvarium/scoring-apps-go/pkg/documents"
 )
@@ -28,10 +29,10 @@ import (
 type ArangoClient struct {
 	cfg    config.ArangoConfig
 	client driver.Client
-	logger logInterface.Logger
+	logger interfaces.Logger
 }
 
-func NewArangoClient(dbConfig config.DatabaseInfo, logger logInterface.Logger) (*ArangoClient, error) {
+func NewArangoClient(dbConfig config.DatabaseInfo, logger interfaces.Logger) (*ArangoClient, error) {
 	cfg, ok := dbConfig.Config.(config.ArangoConfig)
 	if !ok {
 		return nil, fmt.Errorf("invalid config type, expected %s", config.DBArango)
@@ -153,7 +154,7 @@ func (c *ArangoClient) ValidateGraph(ctx context.Context) error {
 	if !exists {
 		return fmt.Errorf("database %s should already exist", c.cfg.DatabaseName)
 	} else {
-		c.logger.Write(logging.DebugLevel, "database exists "+c.cfg.DatabaseName)
+		c.logger.Write(slog.LevelDebug, "database exists "+c.cfg.DatabaseName)
 	}
 	db, err := c.client.Database(ctx, c.cfg.DatabaseName)
 	if err != nil {
@@ -167,7 +168,7 @@ func (c *ArangoClient) ValidateGraph(ctx context.Context) error {
 		return fmt.Errorf("graph %s should already exist", c.cfg.GraphName)
 	}
 
-	c.logger.Write(logging.DebugLevel, "validating existence of edges in graph "+c.cfg.GraphName)
+	c.logger.Write(slog.LevelDebug, "validating existence of edges in graph "+c.cfg.GraphName)
 	for _, item := range c.cfg.Edges {
 		exists, err = db.CollectionExists(ctx, item.CollectionName)
 		if !exists {
@@ -175,7 +176,7 @@ func (c *ArangoClient) ValidateGraph(ctx context.Context) error {
 		}
 	}
 
-	c.logger.Write(logging.DebugLevel, "validating existence of vertexes in graph "+c.cfg.GraphName)
+	c.logger.Write(slog.LevelDebug, "validating existence of vertexes in graph "+c.cfg.GraphName)
 	graph, err := db.Graph(ctx, c.cfg.GraphName)
 	if err != nil {
 		return err

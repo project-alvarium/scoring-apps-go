@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	logInterface "github.com/project-alvarium/provider-logging/pkg/interfaces"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/config"
 	"github.com/project-alvarium/scoring-apps-go/internal/models"
 	"go.mongodb.org/mongo-driver/bson"
@@ -30,10 +30,10 @@ import (
 type MongoProvider struct {
 	cfg      config.MongoConfig
 	instance *mongo.Client
-	logger   logInterface.Logger
+	logger   interfaces.Logger
 }
 
-func NewMongoProvider(configs []config.DatabaseInfo, logger logInterface.Logger) (*MongoProvider, error) {
+func NewMongoProvider(configs []config.DatabaseInfo, logger interfaces.Logger) (*MongoProvider, error) {
 	mp := MongoProvider{
 		logger: logger,
 	}

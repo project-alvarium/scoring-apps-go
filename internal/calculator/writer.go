@@ -17,19 +17,20 @@ package calculator
 import (
 	"context"
 	"fmt"
-	logInterface "github.com/project-alvarium/provider-logging/pkg/interfaces"
-	"github.com/project-alvarium/provider-logging/pkg/logging"
+	"log/slog"
 	"sync"
+
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 )
 
 // Writer can be used as an assistant for debugging so I'm going to leave it for now. If you're unsure whether a message
 // is being delivered at some point of the internal handoff, plug in the Writer to have it log the relevant keys.
 type Writer struct {
 	chKeys chan string
-	logger logInterface.Logger
+	logger interfaces.Logger
 }
 
-func NewWriter(chKeys chan string, logger logInterface.Logger) Writer {
+func NewWriter(chKeys chan string, logger interfaces.Logger) Writer {
 	return Writer{
 		chKeys: chKeys,
 		logger: logger,
@@ -47,7 +48,7 @@ func (w *Writer) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup) bool 
 				return
 			}
 
-			w.logger.Write(logging.DebugLevel, fmt.Sprintf("key received %s", msg))
+			w.logger.Write(slog.LevelDebug, fmt.Sprintf("key received %s", msg))
 		}
 	}()
 
@@ -56,7 +57,7 @@ func (w *Writer) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup) bool 
 		defer wg.Done()
 
 		<-ctx.Done()
-		w.logger.Write(logging.InfoLevel, "shutdown received")
+		w.logger.Write(slog.LevelInfo, "shutdown received")
 	}()
 	return true
 }

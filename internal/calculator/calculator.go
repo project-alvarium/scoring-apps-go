@@ -17,8 +17,9 @@ package calculator
 import (
 	"context"
 	"fmt"
-	logInterface "github.com/project-alvarium/provider-logging/pkg/interfaces"
-	"github.com/project-alvarium/provider-logging/pkg/logging"
+	"log/slog"
+
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/calculator/types"
 	"github.com/project-alvarium/scoring-apps-go/internal/config"
 	"github.com/project-alvarium/scoring-apps-go/pkg/documents"
@@ -32,7 +33,7 @@ type Calculator struct {
 	condition *sync.Cond
 	dbClient  *ArangoClient
 	dbConfig  config.DatabaseInfo
-	logger    logInterface.Logger
+	logger    interfaces.Logger
 	workQueue *types.WorkQueue
 	policy    policies.DcfPolicy
 }
@@ -41,7 +42,7 @@ const (
 	workerMax int = 5
 )
 
-func NewCalculator(chKeys chan string, dbConfig config.DatabaseInfo, logger logInterface.Logger, policy policies.DcfPolicy) Calculator {
+func NewCalculator(chKeys chan string, dbConfig config.DatabaseInfo, logger interfaces.Logger, policy policies.DcfPolicy) Calculator {
 	return Calculator{
 		chKeys:    chKeys,
 		condition: sync.NewCond(&sync.Mutex{}),
@@ -93,7 +94,7 @@ func (c *Calculator) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup) b
 
 				c.condition.L.Unlock()
 				key := c.workQueue.First()
-				c.logger.Write(logging.DebugLevel, fmt.Sprintf("workers %v len %v scored %s", c.workQueue.Workers.Count(), c.workQueue.Len(), key))
+				c.logger.Write(slog.LevelDebug, fmt.Sprintf("workers %v len %v scored %s", c.workQueue.Workers.Count(), c.workQueue.Len(), key))
 				go c.score(ctx, key)
 			} else {
 				time.Sleep(250 * time.Millisecond)
@@ -108,7 +109,7 @@ func (c *Calculator) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup) b
 
 		<-ctx.Done()
 		cancelled = true
-		c.logger.Write(logging.InfoLevel, "shutdown received")
+		c.logger.Write(slog.LevelInfo, "shutdown received")
 	}()
 	return true
 }

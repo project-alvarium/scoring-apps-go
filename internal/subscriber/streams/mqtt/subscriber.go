@@ -17,25 +17,26 @@ package mqtt
 import (
 	"context"
 	"encoding/json"
-	MQTT "github.com/eclipse/paho.mqtt.golang"
-	"github.com/project-alvarium/alvarium-sdk-go/pkg/config"
-	"github.com/project-alvarium/alvarium-sdk-go/pkg/message"
-	logInterface "github.com/project-alvarium/provider-logging/pkg/interfaces"
-	"github.com/project-alvarium/provider-logging/pkg/logging"
-	"github.com/project-alvarium/scoring-apps-go/internal/subscriber"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
+
+	MQTT "github.com/eclipse/paho.mqtt.golang"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/config"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/message"
+	"github.com/project-alvarium/scoring-apps-go/internal/subscriber"
 )
 
 type mqttSubscriber struct {
 	chPub      chan message.SubscribeWrapper
 	endpoint   config.MqttConfig
-	logger     logInterface.Logger
+	logger     interfaces.Logger
 	mqttClient MQTT.Client
 }
 
-func NewMqttSubscriber(endpoint config.MqttConfig, pub chan message.SubscribeWrapper, logger logInterface.Logger) subscriber.Subscriber {
+func NewMqttSubscriber(endpoint config.MqttConfig, pub chan message.SubscribeWrapper, logger interfaces.Logger) subscriber.Subscriber {
 	// create MQTT options
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker(endpoint.Provider.Uri())
@@ -73,7 +74,7 @@ func (s *mqttSubscriber) Subscribe(ctx context.Context, wg *sync.WaitGroup) bool
 				s.logger.Error(token.Error().Error())
 				return false
 			} else {
-				s.logger.Write(logging.DebugLevel, "successfully subscribed (multiple)")
+				s.logger.Write(slog.LevelDebug, "successfully subscribed (multiple)")
 			}
 		}
 	} else if len(s.endpoint.Topics) == 1 {
@@ -83,7 +84,7 @@ func (s *mqttSubscriber) Subscribe(ctx context.Context, wg *sync.WaitGroup) bool
 				s.logger.Error(token.Error().Error())
 				return false
 			} else {
-				s.logger.Write(logging.DebugLevel, "successfully subscribed")
+				s.logger.Write(slog.LevelDebug, "successfully subscribed")
 			}
 		}
 	} else {
@@ -97,7 +98,7 @@ func (s *mqttSubscriber) Subscribe(ctx context.Context, wg *sync.WaitGroup) bool
 
 		<-ctx.Done()
 		close(s.chPub)
-		s.logger.Write(logging.InfoLevel, "shutdown received")
+		s.logger.Write(slog.LevelInfo, "shutdown received")
 	}()
 	return true
 }
@@ -125,7 +126,7 @@ func (s *mqttSubscriber) monitorSignals(signals chan os.Signal, wg *sync.WaitGro
 	for {
 		select {
 		case <-signals:
-			s.logger.Write(logging.InfoLevel, "Interrupt is detected. Message Consumption stopped.")
+			s.logger.Write(slog.LevelInfo, "Interrupt is detected. Message Consumption stopped.")
 			s.Close()
 			break
 		}

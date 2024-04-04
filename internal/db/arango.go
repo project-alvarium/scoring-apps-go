@@ -17,23 +17,24 @@ package db
 import (
 	"context"
 	"errors"
+
 	"github.com/arangodb/go-driver"
 	"github.com/arangodb/go-driver/http"
-	logInterface "github.com/project-alvarium/provider-logging/pkg/interfaces"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/config"
 	"github.com/project-alvarium/scoring-apps-go/pkg/documents"
 )
 
-//TODO: This Client is shared between the Populator and Populator-API. Meanwhile both the Subscriber and Calculator ALSO
+// TODO: This Client is shared between the Populator and Populator-API. Meanwhile both the Subscriber and Calculator ALSO
 // have their own respective Arango clients. Need to look at how this sprawl can be refactored to reduce duplication
 // and maintenance overhead.
 type ArangoClient struct {
 	cfg      config.ArangoConfig
 	instance driver.Client
-	logger   logInterface.Logger
+	logger   interfaces.Logger
 }
 
-func NewArangoClient(configs []config.DatabaseInfo, logger logInterface.Logger) (*ArangoClient, error) {
+func NewArangoClient(configs []config.DatabaseInfo, logger interfaces.Logger) (*ArangoClient, error) {
 	client := ArangoClient{
 		logger: logger,
 	}
