@@ -12,130 +12,168 @@
  * the License.
  *******************************************************************************/
 
-package calculator
+ package calculator
 
-import (
-	"context"
-	"fmt"
-	"log/slog"
-
-	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
-	"github.com/project-alvarium/scoring-apps-go/internal/calculator/types"
-	"github.com/project-alvarium/scoring-apps-go/internal/config"
-	"github.com/project-alvarium/scoring-apps-go/pkg/documents"
-	"github.com/project-alvarium/scoring-apps-go/pkg/policies"
-	"sync"
-	"time"
-)
-
-type Calculator struct {
-	chKeys    chan string
-	condition *sync.Cond
-	dbClient  *ArangoClient
-	dbConfig  config.DatabaseInfo
-	logger    interfaces.Logger
-	workQueue *types.WorkQueue
-	policy    policies.DcfPolicy
-}
-
-const (
-	workerMax int = 5
-)
-
-func NewCalculator(chKeys chan string, dbConfig config.DatabaseInfo, logger interfaces.Logger, policy policies.DcfPolicy) Calculator {
-	return Calculator{
-		chKeys:    chKeys,
-		condition: sync.NewCond(&sync.Mutex{}),
-		dbConfig:  dbConfig,
-		logger:    logger,
-		workQueue: types.NewWorkQueue(),
-		policy:    policy,
-	}
-}
-
-func (c *Calculator) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup) bool {
-	db, err := NewArangoClient(c.dbConfig, c.logger)
-	if err != nil {
-		c.logger.Error(err.Error())
-		return false
-	}
-
-	err = db.ValidateGraph(ctx)
-	if err != nil {
-		c.logger.Error(err.Error())
-		return false
-	}
-
-	c.dbClient = db
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		for {
-			// incoming keys should trigger calculation for associated data
-			msg, ok := <-c.chKeys
-			c.workQueue.Append(msg)
-			if !ok {
-				return
-			}
-		}
-	}()
-
-	cancelled := false
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for !cancelled {
-			if c.workQueue.Len() > 0 {
-				c.condition.L.Lock()
-				if c.workQueue.Workers.Count() >= workerMax {
-					c.condition.Wait()
-				}
-
-				c.condition.L.Unlock()
-				key := c.workQueue.First()
-				c.logger.Write(slog.LevelDebug, fmt.Sprintf("workers %v len %v scored %s", c.workQueue.Workers.Count(), c.workQueue.Len(), key))
-				go c.score(ctx, key)
-			} else {
-				time.Sleep(250 * time.Millisecond)
-			}
-		}
-		return
-	}()
-
-	wg.Add(1)
-	go func() { // Graceful shutdown
-		defer wg.Done()
-
-		<-ctx.Done()
-		cancelled = true
-		c.logger.Write(slog.LevelInfo, "shutdown received")
-	}()
-	return true
-}
-
-func (c *Calculator) score(ctx context.Context, key string) {
-	c.workQueue.Workers.Increment()
-	defer c.workQueue.Workers.Decrement()
-
-	time.Sleep(1500 * time.Millisecond)
-	annotations, err := c.dbClient.QueryAnnotations(ctx, key)
-	if err != nil {
-		c.logger.Error(err.Error())
-		return
-	}
-
-	docScore := documents.NewScore(key, annotations, c.policy)
-	err = c.dbClient.CreateDocument(ctx, docScore.Key.String(), docScore, documents.VertexScores)
-	if err != nil {
-		c.logger.Error(err.Error())
-		return
-	}
-	err = c.dbClient.CreateEdge(ctx, docScore.Key.String(), key, documents.EdgeScoring)
-	if err != nil {
-		c.logger.Error(err.Error())
-		return
-	}
-
-	c.condition.Signal()
-}
+ import (
+	 "context"
+	 "fmt"
+	 "log/slog"
+ 
+	 "sync"
+	 "time"
+ 
+	 "github.com/project-alvarium/alvarium-sdk-go/pkg/contracts"
+	 "github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
+	 "github.com/project-alvarium/scoring-apps-go/internal/calculator/types"
+	 "github.com/project-alvarium/scoring-apps-go/internal/config"
+	 "github.com/project-alvarium/scoring-apps-go/pkg/documents"
+	 "github.com/project-alvarium/scoring-apps-go/pkg/policies"
+ )
+ 
+ type Calculator struct {
+	 chKeys    chan string
+	 condition *sync.Cond
+	 dbClient  *ArangoClient
+	 dbConfig  config.DatabaseInfo
+	 logger    interfaces.Logger
+	 workQueue *types.WorkQueue
+	 policy    policies.DcfPolicy
+ }
+ 
+ const (
+	 workerMax int = 5
+ )
+ 
+ func NewCalculator(chKeys chan string, dbConfig config.DatabaseInfo, logger interfaces.Logger, policy policies.DcfPolicy) Calculator {
+	 return Calculator{
+		 chKeys:    chKeys,
+		 condition: sync.NewCond(&sync.Mutex{}),
+		 dbConfig:  dbConfig,
+		 logger:    logger,
+		 workQueue: types.NewWorkQueue(),
+		 policy:    policy,
+	 }
+ }
+ 
+ func (c *Calculator) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup) bool {
+	 db, err := NewArangoClient(c.dbConfig, c.logger)
+	 if err != nil {
+		 c.logger.Error(err.Error())
+		 return false
+	 }
+ 
+	 err = db.ValidateGraph(ctx)
+	 if err != nil {
+		 c.logger.Error(err.Error())
+		 return false
+	 }
+ 
+	 c.dbClient = db
+	 wg.Add(1)
+	 go func() {
+		 defer wg.Done()
+ 
+		 for {
+			 // incoming keys should trigger calculation for associated data
+			 msg, ok := <-c.chKeys
+			 c.workQueue.Append(msg)
+			 if !ok {
+				 return
+			 }
+		 }
+	 }()
+ 
+	 cancelled := false
+	 wg.Add(1)
+	 go func() {
+		 defer wg.Done()
+		 for !cancelled {
+			 if c.workQueue.Len() > 0 {
+				 c.condition.L.Lock()
+				 if c.workQueue.Workers.Count() >= workerMax {
+					 c.condition.Wait()
+				 }
+ 
+				 c.condition.L.Unlock()
+				 key := c.workQueue.First()
+				 c.logger.Write(slog.LevelDebug, fmt.Sprintf("workers %v len %v scored %s", c.workQueue.Workers.Count(), c.workQueue.Len(), key))
+				 go c.score(ctx, key)
+			 } else {
+				 time.Sleep(250 * time.Millisecond)
+			 }
+		 }
+		 return
+	 }()
+ 
+	 wg.Add(1)
+	 go func() { // Graceful shutdown
+		 defer wg.Done()
+ 
+		 <-ctx.Done()
+		 cancelled = true
+		 c.logger.Write(slog.LevelInfo, "shutdown received")
+	 }()
+	 return true
+ }
+ 
+ func (c *Calculator) score(ctx context.Context, key string) {
+	 c.workQueue.Workers.Increment()
+	 defer c.workQueue.Workers.Decrement()
+ 
+	 time.Sleep(1500 * time.Millisecond)
+	 annotations, err := c.dbClient.QueryAnnotations(ctx, key)
+	 if err != nil {
+		 c.logger.Error(err.Error())
+		 return
+	 }
+	 var layer contracts.LayerType = annotations[0].Layer
+	 var docScore documents.Score
+ 
+	 switch layer {
+	 case contracts.Application:
+		 // Find the score of CICD pipeline that built the app
+		 tagScore, err := c.dbClient.QueryScoreByTag(ctx, annotations[0].Tag)
+		 if err != nil {
+			 c.logger.Error(err.Error())
+			 return
+		 }
+ 
+		 // Calculate the app layer confidence, linked to the CICD score
+		 docScore = documents.NewScore(key, annotations, c.policy, tagScore.Confidence)
+		 err = c.dbClient.CreateDocument(ctx, docScore.Key.String(), docScore, documents.VertexScores)
+		 if err != nil {
+			 c.logger.Error(err.Error())
+			 return
+		 }
+ 
+		 // Create an edge between the score and the data
+		 err = c.dbClient.CreateEdge(ctx, docScore.Key.String(), key, documents.EdgeScoring)
+		 if err != nil {
+			 c.logger.Error(err.Error())
+			 return
+		 }
+ 
+		 // Create an edge between the app score and CICD score
+		 err = c.dbClient.CreateEdge(ctx, docScore.Key.String(), tagScore.Key.String(), documents.EdgeLinkage)
+		 if err != nil {
+			 c.logger.Error(err.Error())
+			 return
+		 }
+ 
+	 default:
+		 docScore = documents.NewScore(key, annotations, c.policy, 1)
+		 err = c.dbClient.CreateDocument(ctx, docScore.Key.String(), docScore, documents.VertexScores)
+		 if err != nil {
+			 c.logger.Error(err.Error())
+			 return
+		 }
+		 err = c.dbClient.CreateEdge(ctx, docScore.Key.String(), key, documents.EdgeScoring)
+		 if err != nil {
+			 c.logger.Error(err.Error())
+			 return
+		 }
+	 }
+ 
+	 c.condition.Signal()
+ }
+ 
