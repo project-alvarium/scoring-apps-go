@@ -82,26 +82,21 @@ type Score struct {
 	Layer      contracts.LayerType `json:"layer,omitempty"`
 }
 
-func uniqueTags(annotations []Annotation) []string {
-	unique := make(map[string]bool)
-	var result []string
-
-	for _, annotation := range annotations {
-		if !unique[annotation.Tag] {
-			unique[annotation.Tag] = true
-			result = append(result, annotation.Tag)
-		}
-	}
-	return result
-}
-
 func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolicy, tagScores map[string]Score) Score {
 	// All incoming annotations will have the same layer value
 	layer := annotations[0].Layer
 
 	// The received annotations might have multiple tag values
 	// The score tag should contain all these tag values
-	scoreTag := uniqueTags(annotations)
+	uniqueTags := make(map[string]bool)
+	var scoreTag []string
+
+	for _, annotation := range annotations {
+		if !uniqueTags[annotation.Tag] {
+			uniqueTags[annotation.Tag] = true
+			scoreTag = append(scoreTag, annotation.Tag)
+		}
+	}
 
 	var totalTagConfidence float64
 	var totalWeight, passedWeight float32
