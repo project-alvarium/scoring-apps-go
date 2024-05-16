@@ -78,12 +78,23 @@ type Score struct {
 	Policy     string              `json:"policy,omitempty"`     // Policy will indicate some version of the policy used to calculate confidence
 	Confidence float64             `json:"confidence,omitempty"` // Confidence is the percentage of trust in the dataRef
 	Timestamp  time.Time           `json:"timestamp,omitempty"`  // Timestamp indicates when the score was calculated
-	Tag        string              `json:"tag,omitempty"`
+	Tag        []string            `json:"tag,omitempty"`
 	Layer      contracts.LayerType `json:"layer,omitempty"`
 }
 
 func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolicy, tagScores map[string]Score) Score {
+	// All incoming annotations will have the same layer value
 	layer := annotations[0].Layer
+
+	// The received annotations might have multiple tag values
+	// The score tag should contain all these tag values
+	scoreTag := make([]string, len(tagScores))
+
+	i := 0
+	for k := range tagScores {
+		scoreTag[i] = k
+		i++
+	}
 
 	var totalTagConfidence float64
 	var totalWeight, passedWeight float32
@@ -109,11 +120,6 @@ func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolic
 	confidence := float64(passedWeight / totalWeight)
 	confidence *= averageTagConfidence
 	confidence = math.Round(confidence*100) / 100
-
-	scoreTag := ""
-	if len(tagScores) <= 1 {
-		scoreTag = annotations[0].Tag
-	}
 
 	s := Score{
 		Key:        NewULID(),
