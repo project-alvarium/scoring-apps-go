@@ -114,8 +114,8 @@ func (c *ArangoClient) CreateEdge(ctx context.Context, src string, target string
 			To:   fmt.Sprintf("%s/%s", documents.VertexData, target),
 		}
 		_, err = edge.CreateDocument(ctx, doc)
-	case documents.EdgeLinkage:
-		doc := documents.Linkage{
+	case documents.EdgeStack:
+		doc := documents.Stack{
 			From: fmt.Sprintf("%s/%s", documents.VertexScores, src),
 			To:   fmt.Sprintf("%s/%s", documents.VertexScores, target),
 		}

@@ -163,7 +163,7 @@ func (c *Calculator) score(ctx context.Context, key string) {
 
 		for _, tagScore := range tagScoreMap {
 			// Create an edge between the app score and CICD score
-			err = c.dbClient.CreateEdge(ctx, tagScore.Key.String(), docScore.Key.String(), documents.EdgeLinkage)
+			err = c.dbClient.CreateEdge(ctx, tagScore.Key.String(), docScore.Key.String(), documents.EdgeStack)
 			if err != nil {
 				c.logger.Error(err.Error())
 				return

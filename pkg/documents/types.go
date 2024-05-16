@@ -27,7 +27,7 @@ const (
 	EdgeLineage       string = "lineage"
 	EdgeScoring       string = "scoring"
 	EdgeTrust         string = "trust"
-	EdgeLinkage       string = "linkage"
+	EdgeStack         string = "stack"
 	VertexAnnotations string = "annotations"
 	VertexData        string = "data"
 	VertexScores      string = "scores"
@@ -153,8 +153,8 @@ type Scoring struct {
 	To   string `json:"_to"`
 }
 
-// Scoring represents a document in the "linkage" edge collection
-type Linkage struct {
+// Scoring represents a document in the "stack" edge collection
+type Stack struct {
 	From string `json:"_from"`
 	To   string `json:"_to"`
 }

@@ -38,7 +38,7 @@
           "to": ["data"]
         },
         {
-          "collectionName": "linkage",
+          "collectionName": "stack",
           "from": ["scores"],
           "to": ["scores"]
         }
