@@ -90,10 +90,8 @@ func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolic
 	// The score tag should contain all these tag values
 	scoreTag := make([]string, len(tagScores))
 
-	i := 0
-	for k := range tagScores {
-		scoreTag[i] = k
-		i++
+	for _, annotation := range annotations {
+		scoreTag = append(scoreTag, annotation.Tag)
 	}
 
 	var totalTagConfidence float64
