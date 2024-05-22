@@ -114,7 +114,12 @@ func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolic
 			totalTagConfidence += tagScore.Confidence
 		} else {
 			// Default value that penalizes the score for not having stack confidence
-			totalTagConfidence += 0.7
+			// This happens for layers that should have stack confidence only (App, OS)
+			if layer == contracts.Application || layer == contracts.Os {
+				totalTagConfidence += 0.7
+			} else {
+				totalTagConfidence += 1.0
+			}
 		}
 	}
 
