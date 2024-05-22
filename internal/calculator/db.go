@@ -210,6 +210,7 @@ func (c *ArangoClient) QueryScoreByTag(ctx context.Context, tag string, layer co
 	FOR s in scores
 		FILTER @tag IN s.tag AND s.layer == @layer AND s.confidence != null
 		SORT s.timestamp DESC
+		LIMIT 1
 		RETURN s
 	`
 	bindVars := map[string]interface{}{
