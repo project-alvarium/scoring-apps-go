@@ -36,6 +36,11 @@
           "collectionName": "scoring",
           "from": ["scores"],
           "to": ["data"]
+        },
+        {
+          "collectionName": "stack",
+          "from": ["scores"],
+          "to": ["scores"]
         }
       ],
       "graphName": "example-graph",
