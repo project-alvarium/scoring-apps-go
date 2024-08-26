@@ -19,13 +19,15 @@ import (
 	"fmt"
 	"log/slog"
 
+	"sync"
+	"time"
+
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/contracts"
 	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/calculator/types"
 	"github.com/project-alvarium/scoring-apps-go/internal/config"
 	"github.com/project-alvarium/scoring-apps-go/pkg/documents"
 	"github.com/project-alvarium/scoring-apps-go/pkg/policies"
-	"sync"
-	"time"
 )
 
 type Calculator struct {
@@ -124,17 +126,62 @@ func (c *Calculator) score(ctx context.Context, key string) {
 		c.logger.Error(err.Error())
 		return
 	}
+	var layer contracts.LayerType = annotations[0].Layer
+	var docScore documents.Score
 
-	docScore := documents.NewScore(key, annotations, c.policy)
-	err = c.dbClient.CreateDocument(ctx, docScore.Key.String(), docScore, documents.VertexScores)
-	if err != nil {
-		c.logger.Error(err.Error())
-		return
-	}
-	err = c.dbClient.CreateEdge(ctx, docScore.Key.String(), key, documents.EdgeScoring)
-	if err != nil {
-		c.logger.Error(err.Error())
-		return
+	tagScoreMap := make(map[string]documents.Score)
+	switch layer {
+	case contracts.Application:
+
+		// Find the confidence scores of CICD pipelines that built the apps that processed the piece of data
+		for _, annotation := range annotations {
+			// Check if the confidence for the tag is already computed
+			if _, exists := tagScoreMap[annotation.Tag]; !exists {
+				tagScore, err := c.dbClient.QueryScoreByTag(ctx, annotation.Tag, contracts.CiCd)
+				if err != nil {
+					c.logger.Error(err.Error())
+					return
+				}
+				tagScoreMap[annotation.Tag] = tagScore
+			}
+		}
+
+		// Calculate the app layer confidence, now linked to the map of CICD scores
+		docScore = documents.NewScore(key, annotations, c.policy, tagScoreMap)
+		err = c.dbClient.CreateDocument(ctx, docScore.Key.String(), docScore, documents.VertexScores)
+		if err != nil {
+			c.logger.Error(err.Error())
+			return
+		}
+
+		// Create an edge between the score and the data
+		err = c.dbClient.CreateEdge(ctx, docScore.Key.String(), key, documents.EdgeScoring)
+		if err != nil {
+			c.logger.Error(err.Error())
+			return
+		}
+
+		for _, tagScore := range tagScoreMap {
+			// Create an edge between the app score and CICD score
+			err = c.dbClient.CreateEdge(ctx, tagScore.Key.String(), docScore.Key.String(), documents.EdgeStack)
+			if err != nil {
+				c.logger.Error(err.Error())
+				return
+			}
+		}
+
+	default:
+		docScore = documents.NewScore(key, annotations, c.policy, tagScoreMap)
+		err = c.dbClient.CreateDocument(ctx, docScore.Key.String(), docScore, documents.VertexScores)
+		if err != nil {
+			c.logger.Error(err.Error())
+			return
+		}
+		err = c.dbClient.CreateEdge(ctx, docScore.Key.String(), key, documents.EdgeScoring)
+		if err != nil {
+			c.logger.Error(err.Error())
+			return
+		}
 	}
 
 	c.condition.Signal()
