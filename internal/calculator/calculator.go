@@ -172,7 +172,7 @@ func (c *Calculator) score(ctx context.Context, key string) {
 			return
 		}
 
-    for _, tagScore := range tagFieldScores {
+		for _, tagScore := range tagFieldScores {
 			// Create an edge between the app score and CICD score
 			err = c.dbClient.CreateEdge(ctx, tagScore.Key.String(), docScore.Key.String(), documents.EdgeStack)
 			if err != nil {
@@ -181,7 +181,7 @@ func (c *Calculator) score(ctx context.Context, key string) {
 			}
 		}
 
-    for _, hostFieldScore := range hostFieldScores {
+		for _, hostFieldScore := range hostFieldScores {
 			// Create an edge between the app score and OS score
 			err = c.dbClient.CreateEdge(ctx, hostFieldScore.Key.String(), docScore.Key.String(), documents.EdgeStack)
 			if err != nil {
