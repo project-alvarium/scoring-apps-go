@@ -98,7 +98,7 @@ func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolic
 		}
 	}
 
-	var totalTagFieldConfidence, totalHostFieldConfidence float64
+  var totalTagFieldConfidence, totalHostFieldConfidence float64
 	var totalWeight, passedWeight float32
 	var passed int
 	for _, a := range annotations {
@@ -109,64 +109,63 @@ func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolic
 			passedWeight += float32(w.Value)
 		}
 
-		tagScore, exists := tagFieldScores[a.Tag]
-		if exists {
-			totalTagFieldConfidence += tagScore.Confidence
-		}
-		// Commented the penalty to determine how it should be done
-		// else {
-		//      // Default value that penalizes the score for not having stack confidence
-		//      // This happens for layers that should have stack confidence only (App, OS)
-		//      if layer == contracts.Application || layer == contracts.Os {
-		//              totalTagConfidence += 0.7
-		//      } else {
-		//              totalTagConfidence += 1.0
-		//      }
-		// }
+    tagScore, exists := tagFieldScores[a.Tag]
+    if exists {
+      totalTagFieldConfidence += tagScore.Confidence
+    }
+    // Commented the penalty to determine how it should be done
+    // else {
+    //      // Default value that penalizes the score for not having stack confidence
+    //      // This happens for layers that should have stack confidence only (App, OS)
+    //      if layer == contracts.Application || layer == contracts.Os {
+    //              totalTagConfidence += 0.7
+    //      } else {
+    //              totalTagConfidence += 1.0
+    //      }
+    // }
 
-		hostFieldScore, exists := hostFieldScores[a.Host]
-		if exists {
-			totalHostFieldConfidence += hostFieldScore.Confidence
-		}
-		// Commented the penalty to determine how it should be done
-		// else {
-		//      // Default value that penalizes the score for not having stack confidence
-		//      // This happens for layers that should have stack confidence only (App, OS)
-		//      if layer == contracts.Application || layer == contracts.Os {
-		//              totalTagConfidence += 0.7
-		//      } else {
-		//              totalTagConfidence += 1.0
-		//      }
-		// }
-	}
+    hostFieldScore, exists := hostFieldScores[a.Host]
+    if exists {
+      totalHostFieldConfidence += hostFieldScore.Confidence
+    }
+    // Commented the penalty to determine how it should be done
+    // else {
+    //      // Default value that penalizes the score for not having stack confidence
+    //      // This happens for layers that should have stack confidence only (App, OS)
+    //      if layer == contracts.Application || layer == contracts.Os {
+    //              totalTagConfidence += 0.7
+    //      } else {
+    //              totalTagConfidence += 1.0
+    //      }
+    // }
+  }
 
-	averageTagFieldConfidence := totalTagFieldConfidence / float64(len(annotations))
-	averageHostFieldConfidence := totalHostFieldConfidence / float64(len(annotations))
+  averageTagFieldConfidence := totalTagFieldConfidence / float64(len(annotations))
+  averageHostFieldConfidence := totalHostFieldConfidence / float64(len(annotations))
 
-	confidence := float64(passedWeight / totalWeight)
+  confidence := float64(passedWeight / totalWeight)
 
-	// The confidence should be influenced by the lower layers if they have a calculated confidence
-	if averageTagFieldConfidence > 0 {
-		confidence *= averageTagFieldConfidence
-	}
-	if averageHostFieldConfidence > 0 {
-		confidence *= averageHostFieldConfidence
-	}
+  // The confidence should be influenced by the lower layers if they have a calculated confidence
+  if averageTagFieldConfidence > 0 {
+    confidence *= averageTagFieldConfidence
+  }
+  if averageHostFieldConfidence > 0 {
+    confidence *= averageHostFieldConfidence
+  }
+  confidence = math.Round(confidence*100) / 100
 
-	confidence = math.Round(confidence*100) / 100
-
-	s := Score{
-		Key:        NewULID(),
-		DataRef:    dataRef,
-		Passed:     passed,
-		Count:      len(annotations),
-		Policy:     policy.Name,
-		Confidence: confidence,
-		Timestamp:  time.Now(),
-		Layer:      layer,
-		Tag:        scoreTag,
-	}
-	return s
+  s := Score{
+    Key:        NewULID(),
+    DataRef:    dataRef,
+    Passed:     passed,
+    Count:      len(annotations),
+    Policy:     policy.Name,
+    Confidence: confidence,
+    Timestamp:  time.Now(),
+    Layer:      layer,
+    Tag:        scoreTag,
+  }
+  return s
 }
 
 // Trust represents a document in the "trust" edge collection
