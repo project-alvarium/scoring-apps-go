@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2022 Dell Inc.
+ * Copyright 2024 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,6 +21,7 @@ import (
 
 	"github.com/arangodb/go-driver"
 	"github.com/arangodb/go-driver/http"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/contracts"
 	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/config"
 	"github.com/project-alvarium/scoring-apps-go/pkg/documents"
@@ -113,6 +114,12 @@ func (c *ArangoClient) CreateEdge(ctx context.Context, src string, target string
 			To:   fmt.Sprintf("%s/%s", documents.VertexData, target),
 		}
 		_, err = edge.CreateDocument(ctx, doc)
+	case documents.EdgeStack:
+		doc := documents.Stack{
+			From: fmt.Sprintf("%s/%s", documents.VertexScores, src),
+			To:   fmt.Sprintf("%s/%s", documents.VertexScores, target),
+		}
+		_, err = edge.CreateDocument(ctx, doc)
 	}
 	return err
 }
@@ -170,7 +177,7 @@ func (c *ArangoClient) ValidateGraph(ctx context.Context) error {
 
 	c.logger.Write(slog.LevelDebug, "validating existence of edges in graph "+c.cfg.GraphName)
 	for _, item := range c.cfg.Edges {
-		exists, err = db.CollectionExists(ctx, item.CollectionName)
+		exists, _ = db.CollectionExists(ctx, item.CollectionName)
 		if !exists {
 			return fmt.Errorf("edge collection %s should already exist", item.CollectionName)
 		}
@@ -191,4 +198,47 @@ func (c *ArangoClient) ValidateGraph(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (c *ArangoClient) QueryScoreByTag(ctx context.Context, tag string, layer contracts.LayerType) (documents.Score, error) {
+	db, err := c.client.Database(ctx, c.cfg.DatabaseName)
+	if err != nil {
+		return documents.Score{}, err
+	}
+
+	query := `
+	 FOR s in scores
+		 FILTER @tag IN s.tag AND s.layer == @layer AND s.confidence != null
+		 SORT s.timestamp DESC
+		 LIMIT 1
+		 RETURN s
+	 `
+	bindVars := map[string]interface{}{
+		"tag":   tag,
+		"layer": layer,
+	}
+	cursor, err := db.Query(ctx, query, bindVars)
+	if err != nil {
+		return documents.Score{}, err
+	}
+	defer cursor.Close()
+
+	// There should only be one document returned here
+	var score documents.Score
+	foundScore := false
+	for {
+		_, err := cursor.ReadDocument(ctx, &score)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return documents.Score{}, err
+		}
+		foundScore = true
+	}
+
+	if !foundScore {
+		return documents.Score{}, fmt.Errorf("no document found for tag: %s", tag)
+	}
+
+	return score, nil
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2022 Dell Inc.
+ * Copyright 2024 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -27,6 +27,7 @@ const (
 	EdgeLineage       string = "lineage"
 	EdgeScoring       string = "scoring"
 	EdgeTrust         string = "trust"
+	EdgeStack         string = "stack"
 	VertexAnnotations string = "annotations"
 	VertexData        string = "data"
 	VertexScores      string = "scores"
@@ -70,16 +71,34 @@ func NewAnnotation(a contracts.Annotation) Annotation {
 
 // Score represents a document in the "score" vertex collection
 type Score struct {
-	Key        ulid.ULID `json:"_key,omitempty"`       // Key uniquely identifies the document in the database
-	DataRef    string    `json:"dataRef,omitempty"`    // DataRef points to the key of the data being annotated
-	Passed     int       `json:"score,omitempty"`      // Passed indicates how many of the annotations for a given dataRef were Satisfied
-	Count      int       `json:"count,omitempty"`      // Count indicates the total number of annotations applicable to a dataRef
-	Policy     string    `json:"policy,omitempty"`     // Policy will indicate some version of the policy used to calculate confidence
-	Confidence float64   `json:"confidence,omitempty"` // Confidence is the percentage of trust in the dataRef
-	Timestamp  time.Time `json:"timestamp,omitempty"`  // Timestamp indicates when the score was calculated
+	Key        ulid.ULID           `json:"_key,omitempty"`       // Key uniquely identifies the document in the database
+	DataRef    string              `json:"dataRef,omitempty"`    // DataRef points to the key of the data being annotated
+	Passed     int                 `json:"score,omitempty"`      // Passed indicates how many of the annotations for a given dataRef were Satisfied
+	Count      int                 `json:"count,omitempty"`      // Count indicates the total number of annotations applicable to a dataRef
+	Policy     string              `json:"policy,omitempty"`     // Policy will indicate some version of the policy used to calculate confidence
+	Confidence float64             `json:"confidence,omitempty"` // Confidence is the percentage of trust in the dataRef
+	Timestamp  time.Time           `json:"timestamp,omitempty"`  // Timestamp indicates when the score was calculated
+	Tag        []string            `json:"tag,omitempty"`
+	Layer      contracts.LayerType `json:"layer,omitempty"`
 }
 
-func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolicy) Score {
+func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolicy, tagFieldScores map[string]Score, hostFieldScores map[string]Score) Score {
+	// All incoming annotations will have the same layer value
+	layer := annotations[0].Layer
+
+	// The received annotations might have multiple tag values
+	// The score tag should contain all these tag values
+	uniqueTags := make(map[string]bool)
+	var scoreTag []string
+
+	for _, annotation := range annotations {
+		if !uniqueTags[annotation.Tag] {
+			uniqueTags[annotation.Tag] = true
+			scoreTag = append(scoreTag, annotation.Tag)
+		}
+	}
+
+	var totalTagFieldConfidence, totalHostFieldConfidence float64
 	var totalWeight, passedWeight float32
 	var passed int
 	for _, a := range annotations {
@@ -89,9 +108,51 @@ func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolic
 			passed++
 			passedWeight += float32(w.Value)
 		}
+
+		tagScore, exists := tagFieldScores[a.Tag]
+		if exists {
+			totalTagFieldConfidence += tagScore.Confidence
+		}
+		// Commented the penalty to determine how it should be done
+		// else {
+		//      // Default value that penalizes the score for not having stack confidence
+		//      // This happens for layers that should have stack confidence only (App, OS)
+		//      if layer == contracts.Application || layer == contracts.Os {
+		//              totalTagConfidence += 0.7
+		//      } else {
+		//              totalTagConfidence += 1.0
+		//      }
+		// }
+
+		hostFieldScore, exists := hostFieldScores[a.Host]
+		if exists {
+			totalHostFieldConfidence += hostFieldScore.Confidence
+		}
+		// Commented the penalty to determine how it should be done
+		// else {
+		//      // Default value that penalizes the score for not having stack confidence
+		//      // This happens for layers that should have stack confidence only (App, OS)
+		//      if layer == contracts.Application || layer == contracts.Os {
+		//              totalTagConfidence += 0.7
+		//      } else {
+		//              totalTagConfidence += 1.0
+		//      }
+		// }
 	}
 
+	averageTagFieldConfidence := totalTagFieldConfidence / float64(len(annotations))
+	averageHostFieldConfidence := totalHostFieldConfidence / float64(len(annotations))
+
 	confidence := float64(passedWeight / totalWeight)
+
+	// The confidence should be influenced by the lower layers if they have a calculated confidence
+	if averageTagFieldConfidence > 0 {
+		confidence *= averageTagFieldConfidence
+	}
+	if averageHostFieldConfidence > 0 {
+		confidence *= averageHostFieldConfidence
+	}
+
 	confidence = math.Round(confidence*100) / 100
 
 	s := Score{
@@ -102,6 +163,8 @@ func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolic
 		Policy:     policy.Name,
 		Confidence: confidence,
 		Timestamp:  time.Now(),
+		Layer:      layer,
+		Tag:        scoreTag,
 	}
 	return s
 }
@@ -120,6 +183,12 @@ type Lineage struct {
 
 // Scoring represents a document in the "scoring" edge collection
 type Scoring struct {
+	From string `json:"_from"`
+	To   string `json:"_to"`
+}
+
+// Scoring represents a document in the "stack" edge collection
+type Stack struct {
 	From string `json:"_from"`
 	To   string `json:"_to"`
 }
