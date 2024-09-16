@@ -113,31 +113,11 @@ func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolic
 		if exists {
 			totalTagFieldConfidence += tagScore.Confidence
 		}
-		// Commented the penalty to determine how it should be done
-		// else {
-		//      // Default value that penalizes the score for not having stack confidence
-		//      // This happens for layers that should have stack confidence only (App, OS)
-		//      if layer == contracts.Application || layer == contracts.Os {
-		//              totalTagConfidence += 0.7
-		//      } else {
-		//              totalTagConfidence += 1.0
-		//      }
-		// }
 
 		hostFieldScore, exists := hostFieldScores[a.Host]
 		if exists {
 			totalHostFieldConfidence += hostFieldScore.Confidence
 		}
-		// Commented the penalty to determine how it should be done
-		// else {
-		//      // Default value that penalizes the score for not having stack confidence
-		//      // This happens for layers that should have stack confidence only (App, OS)
-		//      if layer == contracts.Application || layer == contracts.Os {
-		//              totalTagConfidence += 0.7
-		//      } else {
-		//              totalTagConfidence += 1.0
-		//      }
-		// }
 	}
 
 	averageTagFieldConfidence := totalTagFieldConfidence / float64(len(annotations))
