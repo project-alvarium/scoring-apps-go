@@ -9,7 +9,7 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.3.5
 	github.com/gorilla/mux v1.8.0
 	github.com/oklog/ulid/v2 v2.0.2
-	github.com/project-alvarium/alvarium-sdk-go v0.0.0-20240705181105-e5ec0811a099
+	github.com/project-alvarium/alvarium-sdk-go v0.0.0-20240909154355-03895664abda
 	go.mongodb.org/mongo-driver v1.8.4
 )
 

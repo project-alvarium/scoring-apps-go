@@ -2071,8 +2071,8 @@ github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZN
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c/go.mod h1:OmDBASR4679mdNQnz2pUhc2G8CO2JrUAVFDRBDP/hJE=
 github.com/prashantv/gostub v1.1.0/go.mod h1:A5zLQHz7ieHGG7is6LLXLz7I8+3LZzsrV0P1IAHhP5U=
-github.com/project-alvarium/alvarium-sdk-go v0.0.0-20240705181105-e5ec0811a099 h1:8RgaiF3wOomIJwa0oHTau7GnD/6w5g5IBSCy3uXokIU=
-github.com/project-alvarium/alvarium-sdk-go v0.0.0-20240705181105-e5ec0811a099/go.mod h1:k7Y/gKOIb31KAfqhukkPXuYY1JvB7Y5us6mBwzigyjk=
+github.com/project-alvarium/alvarium-sdk-go v0.0.0-20240909154355-03895664abda h1:tdfA7dOVJ6uln6HlpODtfHoobu1ujH90yvwifd0pjDU=
+github.com/project-alvarium/alvarium-sdk-go v0.0.0-20240909154355-03895664abda/go.mod h1:k7Y/gKOIb31KAfqhukkPXuYY1JvB7Y5us6mBwzigyjk=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v0.9.3/go.mod h1:/TN21ttK/J9q6uSwhBd54HahCDft0ttaMvbicHlPoso=
 github.com/prometheus/client_golang v1.0.0/go.mod h1:db9x61etRT2tGnBNRi70OPL5FsnadC4Ky3P0J6CfImo=
