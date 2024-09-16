@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2022 Dell Inc.
+ * Copyright 2024 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -207,12 +207,12 @@ func (c *ArangoClient) QueryScoreByTag(ctx context.Context, tag string, layer co
 	}
 
 	query := `
-	FOR s in scores
-		FILTER @tag IN s.tag AND s.layer == @layer AND s.confidence != null
-		SORT s.timestamp DESC
-		LIMIT 1
-		RETURN s
-	`
+      FOR s in scores
+           FILTER @tag IN s.tag AND s.layer == @layer AND s.confidence != null
+           SORT s.timestamp DESC
+           LIMIT 1
+           RETURN s
+	 `
 	bindVars := map[string]interface{}{
 		"tag":   tag,
 		"layer": layer,

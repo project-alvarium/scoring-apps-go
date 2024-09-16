@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2022 Dell Inc.
+ * Copyright 2024 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -102,7 +102,6 @@ func (c *Calculator) BootstrapHandler(ctx context.Context, wg *sync.WaitGroup) b
 				time.Sleep(250 * time.Millisecond)
 			}
 		}
-		return
 	}()
 
 	wg.Add(1)
@@ -129,25 +128,37 @@ func (c *Calculator) score(ctx context.Context, key string) {
 	var layer contracts.LayerType = annotations[0].Layer
 	var docScore documents.Score
 
-	tagScoreMap := make(map[string]documents.Score)
+	tagFieldScores := make(map[string]documents.Score)  // Scores of the "tag" fields of the received annotations
+	hostFieldScores := make(map[string]documents.Score) // Scores of the "host" fields of the received annotations
 	switch layer {
 	case contracts.Application:
-
-		// Find the confidence scores of CICD pipelines that built the apps that processed the piece of data
+		// Find the confidence scores of:
+		// 1. CICD pipelines that built the apps that processed the piece of data
+		// 2. OS on which the app is running
 		for _, annotation := range annotations {
-			// Check if the confidence for the tag is already computed
-			if _, exists := tagScoreMap[annotation.Tag]; !exists {
+			// Check if the confidence for the tag field is already computed
+			if _, exists := tagFieldScores[annotation.Tag]; !exists {
 				tagScore, err := c.dbClient.QueryScoreByTag(ctx, annotation.Tag, contracts.CiCd)
 				if err != nil {
 					c.logger.Error(err.Error())
-					return
+				} else {
+					tagFieldScores[annotation.Tag] = tagScore
 				}
-				tagScoreMap[annotation.Tag] = tagScore
+			}
+
+			// Check if the confidence for the host field is already computed
+			if _, exists := hostFieldScores[annotation.Host]; !exists {
+				hostFieldScore, err := c.dbClient.QueryScoreByTag(ctx, annotation.Host, contracts.Os)
+				if err != nil {
+					c.logger.Error(err.Error())
+				} else {
+					hostFieldScores[annotation.Host] = hostFieldScore
+				}
 			}
 		}
 
-		// Calculate the app layer confidence, now linked to the map of CICD scores
-		docScore = documents.NewScore(key, annotations, c.policy, tagScoreMap)
+		// Calculate the app layer confidence, now influenced by the CICD scores and OS scores
+		docScore = documents.NewScore(key, annotations, c.policy, tagFieldScores, hostFieldScores)
 		err = c.dbClient.CreateDocument(ctx, docScore.Key.String(), docScore, documents.VertexScores)
 		if err != nil {
 			c.logger.Error(err.Error())
@@ -161,7 +172,7 @@ func (c *Calculator) score(ctx context.Context, key string) {
 			return
 		}
 
-		for _, tagScore := range tagScoreMap {
+		for _, tagScore := range tagFieldScores {
 			// Create an edge between the app score and CICD score
 			err = c.dbClient.CreateEdge(ctx, tagScore.Key.String(), docScore.Key.String(), documents.EdgeStack)
 			if err != nil {
@@ -170,8 +181,55 @@ func (c *Calculator) score(ctx context.Context, key string) {
 			}
 		}
 
+		for _, hostFieldScore := range hostFieldScores {
+			// Create an edge between the app score and OS score
+			err = c.dbClient.CreateEdge(ctx, hostFieldScore.Key.String(), docScore.Key.String(), documents.EdgeStack)
+			if err != nil {
+				c.logger.Error(err.Error())
+				return
+			}
+		}
+
+	case contracts.Os:
+		// Find the confidence scores of host on which the OS is running
+		for _, annotation := range annotations {
+			// Check if the confidence for the tag is already computed
+			if _, exists := tagFieldScores[annotation.Tag]; !exists {
+				tagScore, err := c.dbClient.QueryScoreByTag(ctx, annotation.Tag, contracts.Host)
+				if err != nil {
+					c.logger.Error(err.Error())
+					return
+				}
+				tagFieldScores[annotation.Tag] = tagScore
+			}
+		}
+
+		// Calculate the OS layer confidence, now influenced by the host scores
+		docScore = documents.NewScore(key, annotations, c.policy, tagFieldScores, hostFieldScores)
+		err = c.dbClient.CreateDocument(ctx, docScore.Key.String(), docScore, documents.VertexScores)
+		if err != nil {
+			c.logger.Error(err.Error())
+			return
+		}
+
+		// Create an edge between the score and the data
+		err = c.dbClient.CreateEdge(ctx, docScore.Key.String(), key, documents.EdgeScoring)
+		if err != nil {
+			c.logger.Error(err.Error())
+			return
+		}
+
+		for _, tagScore := range tagFieldScores {
+			// Create an edge between the OS score and host score
+			err = c.dbClient.CreateEdge(ctx, tagScore.Key.String(), docScore.Key.String(), documents.EdgeStack)
+			if err != nil {
+				c.logger.Error(err.Error())
+				return
+			}
+		}
+
 	default:
-		docScore = documents.NewScore(key, annotations, c.policy, tagScoreMap)
+		docScore = documents.NewScore(key, annotations, c.policy, tagFieldScores, hostFieldScores)
 		err = c.dbClient.CreateDocument(ctx, docScore.Key.String(), docScore, documents.VertexScores)
 		if err != nil {
 			c.logger.Error(err.Error())

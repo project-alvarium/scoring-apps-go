@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2022 Dell Inc.
+ * Copyright 2024 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -82,7 +82,7 @@ type Score struct {
 	Layer      contracts.LayerType `json:"layer,omitempty"`
 }
 
-func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolicy, tagScores map[string]Score) Score {
+func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolicy, tagFieldScores map[string]Score, hostFieldScores map[string]Score) Score {
 	// All incoming annotations will have the same layer value
 	layer := annotations[0].Layer
 
@@ -98,7 +98,7 @@ func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolic
 		}
 	}
 
-	var totalTagConfidence float64
+	var totalTagFieldConfidence, totalHostFieldConfidence float64
 	var totalWeight, passedWeight float32
 	var passed int
 	for _, a := range annotations {
@@ -109,23 +109,29 @@ func NewScore(dataRef string, annotations []Annotation, policy policies.DcfPolic
 			passedWeight += float32(w.Value)
 		}
 
-		tagScore, exists := tagScores[a.Tag]
+		tagScore, exists := tagFieldScores[a.Tag]
 		if exists {
-			totalTagConfidence += tagScore.Confidence
-		} else {
-			// Default value that penalizes the score for not having stack confidence
-			// This happens for layers that should have stack confidence only (App, OS)
-			if layer == contracts.Application || layer == contracts.Os {
-				totalTagConfidence += 0.7
-			} else {
-				totalTagConfidence += 1.0
-			}
+			totalTagFieldConfidence += tagScore.Confidence
+		}
+
+		hostFieldScore, exists := hostFieldScores[a.Host]
+		if exists {
+			totalHostFieldConfidence += hostFieldScore.Confidence
 		}
 	}
 
-	averageTagConfidence := totalTagConfidence / float64(len(annotations))
+	averageTagFieldConfidence := totalTagFieldConfidence / float64(len(annotations))
+	averageHostFieldConfidence := totalHostFieldConfidence / float64(len(annotations))
+
 	confidence := float64(passedWeight / totalWeight)
-	confidence *= averageTagConfidence
+
+	// The confidence should be influenced by the lower layers if they have a calculated confidence
+	if averageTagFieldConfidence > 0 {
+		confidence *= averageTagFieldConfidence
+	}
+	if averageHostFieldConfidence > 0 {
+		confidence *= averageHostFieldConfidence
+	}
 	confidence = math.Round(confidence*100) / 100
 
 	s := Score{
