@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2022 Dell Inc.
+ * Copyright 2024 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,6 +20,7 @@ import (
 
 	"github.com/arangodb/go-driver"
 	"github.com/arangodb/go-driver/http"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/contracts"
 	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/config"
 	"github.com/project-alvarium/scoring-apps-go/pkg/documents"
@@ -88,7 +89,7 @@ func (c *ArangoClient) QueryScore(ctx context.Context, key string) (documents.Sc
 	}
 	defer cursor.Close()
 
-	//There should only be one document returned here
+	// There should only be one document returned here
 	var score documents.Score
 	for {
 		_, err := cursor.ReadDocument(ctx, &score)
@@ -106,9 +107,37 @@ func (c *ArangoClient) QueryAnnotations(ctx context.Context, key string) ([]docu
 	if err != nil {
 		return nil, err
 	}
-	query := "FOR a in annotations FILTER a.dataRef == @key RETURN a"
+	query := `
+		LET stackAnnotations = (
+			FOR a IN annotations 
+			FILTER a.dataRef == @key
+				LET osHostAnnotations = (
+					FOR osAn IN annotations
+					FILTER a.host == osAn.host AND
+						osAn.layer == @os
+					LET hostAnnotations = (
+						FOR hostAn in annotations 
+						FILTER hostAn.tag == osAn.tag AND 
+							hostAn.layer == @host
+						RETURN hostAn
+					)
+					RETURN FLATTEN(APPEND([osAn], hostAnnotations))
+				)
+				LET cicdAnnotations = (
+					FOR cicdAn IN annotations 
+					FILTER a.tag == cicdAn.tag AND cicdAn.layer == @cicd  
+					RETURN cicdAn
+				)
+			RETURN DISTINCT APPEND(cicdAnnotations, osHostAnnotations)
+		)
+		LET appAnnotations = (FOR a IN annotations FILTER a.dataRef == @key RETURN a)
+		RETURN FLATTEN(APPEND(appAnnotations, stackAnnotations))
+		`
 	bindVars := map[string]interface{}{
-		"key": key,
+		"key":  key,
+		"cicd": string(contracts.CiCd),
+		"os":   string(contracts.Os),
+		"host": string(contracts.Host),
 	}
 	cursor, err := db.Query(ctx, query, bindVars)
 	if err != nil {
@@ -118,14 +147,101 @@ func (c *ArangoClient) QueryAnnotations(ctx context.Context, key string) ([]docu
 
 	var annotations []documents.Annotation
 	for {
-		var doc documents.Annotation
-		_, err := cursor.ReadDocument(ctx, &doc)
+		_, err := cursor.ReadDocument(ctx, &annotations)
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
 			return nil, err
 		}
-		annotations = append(annotations, doc)
 	}
+
 	return annotations, nil
+}
+
+func (c *ArangoClient) QueryScoreByLayer(ctx context.Context, key string, layer contracts.LayerType) ([]documents.Score, error) {
+	db, err := c.instance.Database(ctx, c.cfg.DatabaseName)
+	if err != nil {
+		return nil, err
+	}
+
+	var query string
+	switch layer {
+	case contracts.Application:
+		query = `FOR s IN scores FILTER s.dataRef == @key AND s.layer == @layer RETURN [s]`
+	case contracts.CiCd:
+		query = `FOR appScore IN scores FILTER appScore.dataRef == @key 
+				LET cicdScore = (
+					FOR s IN scores FILTER 
+					s.layer == @layer AND s.tag ANY IN appScore.tag 
+					SORT s.timestamp DESC LIMIT 1
+					RETURN s 
+				)
+				RETURN cicdScore `
+	case contracts.Os, contracts.Host:
+		query = `FOR a in annotations FILTER a.dataRef == @key LIMIT 1
+				LET scores = (FOR s IN scores FILTER s.layer == @layer AND
+				        a.host IN s.tag SORT s.timestamp DESC LIMIT 1 RETURN s)
+				RETURN scores`
+
+	}
+	bindVars := map[string]interface{}{
+		"key":   key,
+		"layer": layer,
+	}
+	cursor, err := db.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close()
+
+	var scores []documents.Score
+	for {
+		_, err := cursor.ReadDocument(ctx, &scores)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+	}
+
+	return scores, nil
+}
+
+func (c *ArangoClient) FetchHosts(ctx context.Context) ([]string, error) {
+	db, err := c.instance.Database(ctx, c.cfg.DatabaseName)
+	if err != nil {
+		return nil, err
+	}
+
+	query := `FOR a IN annotations FILTER a.layer == @app LET hosts = (a.host) RETURN DISTINCT hosts`
+	bindVars := map[string]interface{}{
+		"app": string(contracts.Application),
+	}
+	cursor, err := db.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close()
+
+	var hosts []string
+	for {
+		// returning 1 result will expect a string value,
+		// if multiple values, expects a []string value
+		if cursor.Count() > 1 {
+			_, err = cursor.ReadDocument(ctx, &hosts)
+		} else {
+			var host string
+			_, err = cursor.ReadDocument(ctx, &host)
+			if err == nil {
+				hosts = append(hosts, host)
+			}
+		}
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+	}
+
+	return hosts, nil
 }
