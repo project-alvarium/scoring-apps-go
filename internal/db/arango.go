@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2022 Dell Inc.
+ * Copyright 2024 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,6 +20,7 @@ import (
 
 	"github.com/arangodb/go-driver"
 	"github.com/arangodb/go-driver/http"
+	"github.com/project-alvarium/alvarium-sdk-go/pkg/contracts"
 	"github.com/project-alvarium/alvarium-sdk-go/pkg/interfaces"
 	"github.com/project-alvarium/scoring-apps-go/internal/config"
 	"github.com/project-alvarium/scoring-apps-go/pkg/documents"
@@ -34,7 +35,10 @@ type ArangoClient struct {
 	logger   interfaces.Logger
 }
 
-func NewArangoClient(configs []config.DatabaseInfo, logger interfaces.Logger) (*ArangoClient, error) {
+func NewArangoClient(
+	configs []config.DatabaseInfo,
+	logger interfaces.Logger,
+) (*ArangoClient, error) {
 	client := ArangoClient{
 		logger: logger,
 	}
@@ -88,7 +92,7 @@ func (c *ArangoClient) QueryScore(ctx context.Context, key string) (documents.Sc
 	}
 	defer cursor.Close()
 
-	//There should only be one document returned here
+	// There should only be one document returned here
 	var score documents.Score
 	for {
 		_, err := cursor.ReadDocument(ctx, &score)
@@ -101,14 +105,37 @@ func (c *ArangoClient) QueryScore(ctx context.Context, key string) (documents.Sc
 	return score, nil
 }
 
-func (c *ArangoClient) QueryAnnotations(ctx context.Context, key string) ([]documents.Annotation, error) {
+func (c *ArangoClient) QueryAnnotations(
+	ctx context.Context,
+	key string,
+) ([]documents.Annotation, error) {
 	db, err := c.instance.Database(ctx, c.cfg.DatabaseName)
 	if err != nil {
 		return nil, err
 	}
-	query := "FOR a in annotations FILTER a.dataRef == @key RETURN a"
+
+	// This query gets the data score (app layer), then checks all connected nodes
+	// with the "stack" edge, it should include all influencing CICD and OS scores.
+	// For each connected score node, the "tags" array is iterated on and all annotations
+	// that have a tag included in that array are returned by the query. This will work
+	// with all layer annotations.
+	query := `
+		FOR score IN scores FILTER score.dataRef == @key
+			FOR v, e, p IN 1..1 ANY score._id GRAPH @graph
+			FILTER CONTAINS(e._id, @stack)
+			LET tags = v.tag
+			LET layer = v.layer
+			FOR tag IN tags
+				FOR annotation IN annotations
+				FILTER annotation.tag IN tags AND 
+					(annotation.layer != @app OR annotation.dataRef == @key)
+				RETURN annotation
+		`
 	bindVars := map[string]interface{}{
-		"key": key,
+		"key":   key,
+		"stack": documents.EdgeStack,
+		"graph": c.cfg.GraphName,
+		"app":   contracts.Application,
 	}
 	cursor, err := db.Query(ctx, query, bindVars)
 	if err != nil {
@@ -118,14 +145,107 @@ func (c *ArangoClient) QueryAnnotations(ctx context.Context, key string) ([]docu
 
 	var annotations []documents.Annotation
 	for {
-		var doc documents.Annotation
-		_, err := cursor.ReadDocument(ctx, &doc)
+		var a documents.Annotation
+		_, err := cursor.ReadDocument(ctx, &a)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		annotations = append(annotations, a)
+	}
+
+	return annotations, nil
+}
+
+func (c *ArangoClient) QueryScoreByLayer(
+	ctx context.Context,
+	key string,
+	layer contracts.LayerType,
+) ([]documents.Score, error) {
+	db, err := c.instance.Database(ctx, c.cfg.DatabaseName)
+	if err != nil {
+		return nil, err
+	}
+
+	var query string
+	switch layer {
+	case contracts.Application:
+		query = `FOR s IN scores FILTER s.dataRef == @key AND s.layer == @layer RETURN [s]`
+	case contracts.CiCd:
+		query = `FOR appScore IN scores FILTER appScore.dataRef == @key 
+				LET cicdScore = (
+					FOR s IN scores FILTER 
+					s.layer == @layer AND s.tag ANY IN appScore.tag 
+					RETURN s 
+				)
+				RETURN cicdScore `
+	case contracts.Os, contracts.Host:
+		query = `FOR a in annotations FILTER a.dataRef == @key LIMIT 1
+				LET scores = (FOR s IN scores FILTER s.layer == @layer AND
+				        a.host IN s.tag RETURN s)
+				RETURN scores`
+
+	}
+	bindVars := map[string]interface{}{
+		"key":   key,
+		"layer": layer,
+	}
+	cursor, err := db.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close()
+
+	var scores []documents.Score
+	for {
+		_, err := cursor.ReadDocument(ctx, &scores)
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
 			return nil, err
 		}
-		annotations = append(annotations, doc)
 	}
-	return annotations, nil
+
+	return scores, nil
+}
+
+func (c *ArangoClient) FetchHosts(ctx context.Context) ([]string, error) {
+	db, err := c.instance.Database(ctx, c.cfg.DatabaseName)
+	if err != nil {
+		return nil, err
+	}
+
+	query := `FOR a IN annotations FILTER a.layer == @app LET hosts = (a.host) RETURN DISTINCT hosts`
+	bindVars := map[string]interface{}{
+		"app": string(contracts.Application),
+	}
+	cursor, err := db.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close()
+
+	var hosts []string
+	for {
+		// returning 1 result will expect a string value,
+		// if multiple values, expects a []string value
+		if cursor.Count() > 1 {
+			_, err = cursor.ReadDocument(ctx, &hosts)
+		} else {
+			var host string
+			_, err = cursor.ReadDocument(ctx, &host)
+			if err == nil {
+				hosts = append(hosts, host)
+			}
+		}
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+	}
+
+	return hosts, nil
 }
