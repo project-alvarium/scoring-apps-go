@@ -71,13 +71,13 @@ func NewAnnotation(a contracts.Annotation) Annotation {
 
 // Score represents a document in the "score" vertex collection
 type Score struct {
-	Key        ulid.ULID           `json:"_key,omitempty"`       // Key uniquely identifies the document in the database
-	DataRef    string              `json:"dataRef,omitempty"`    // DataRef points to the key of the data being annotated
-	Passed     int                 `json:"score,omitempty"`      // Passed indicates how many of the annotations for a given dataRef were Satisfied
-	Count      int                 `json:"count,omitempty"`      // Count indicates the total number of annotations applicable to a dataRef
-	Policy     string              `json:"policy,omitempty"`     // Policy will indicate some version of the policy used to calculate confidence
-	Confidence float64             `json:"confidence,omitempty"` // Confidence is the percentage of trust in the dataRef
-	Timestamp  time.Time           `json:"timestamp,omitempty"`  // Timestamp indicates when the score was calculated
+	Key        ulid.ULID           `json:"_key,omitempty"`      // Key uniquely identifies the document in the database
+	DataRef    string              `json:"dataRef,omitempty"`   // DataRef points to the key of the data being annotated
+	Passed     int                 `json:"score"`               // Passed indicates how many of the annotations for a given dataRef were Satisfied
+	Count      int                 `json:"count"`               // Count indicates the total number of annotations applicable to a dataRef
+	Policy     string              `json:"policy,omitempty"`    // Policy will indicate some version of the policy used to calculate confidence
+	Confidence float64             `json:"confidence"`          // Confidence is the percentage of trust in the dataRef
+	Timestamp  time.Time           `json:"timestamp,omitempty"` // Timestamp indicates when the score was calculated
 	Tag        []string            `json:"tag,omitempty"`
 	Layer      contracts.LayerType `json:"layer,omitempty"`
 }
